@@ -1,0 +1,17 @@
+{
+  "name": "upmon-agent",
+  "version": "1.0.0",
+  "description": "UpMon lightweight metrics agent — install on each server you want to monitor",
+  "main": "agent.js",
+  "scripts": {
+    "start": "node agent.js"
+  },
+  "license": "ISC",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "systeminformation": "^5.23.0"
+  }
+}

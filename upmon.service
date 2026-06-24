@@ -1,0 +1,19 @@
+[Unit]
+Description=UpMon - infrastructure status monitor
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/upmon
+ExecStart=/usr/bin/node /opt/upmon/server.js
+Restart=always
+RestartSec=3
+User=upmon
+Group=upmon
+
+# Set your real admin password here, or better: put it in /opt/upmon/upmon.env
+EnvironmentFile=-/opt/upmon/upmon.env
+Environment=PORT=3002
+
+[Install]
+WantedBy=multi-user.target

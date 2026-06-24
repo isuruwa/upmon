@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Host</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#0a0c10; --panel:#12151c; --panel2:#181c26; --line:#232838;
+    --text:#e8ecf4; --muted:#5b6478; --dim:#838ea3;
+    --up:#2ee37e; --up-dim:#0e3322; --down:#ff4d5e; --down-dim:#3a1018;
+    --pending:#f5b942; --pending-dim:#3a2c0a;
+    --cpu:#3b82f6; --mem:#2ee37e; --disk:#f5b942;
+    --font:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    --mono:'JetBrains Mono','SF Mono',Consolas,monospace;
+  }
+  html,body{height:100%}
+  body{
+    background:radial-gradient(ellipse 1200px 600px at 50% -10%,rgba(46,227,126,0.04),transparent 60%),var(--bg);
+    color:var(--text);font-family:var(--font);min-height:100vh;
+  }
+
+  /* ── Top bar ── */
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:16px 40px;border-bottom:1px solid var(--line);
+  }
+  .brand{display:flex;align-items:center;gap:12px}
+  .brand-logo{
+    width:34px;height:34px;border-radius:10px;
+    background:linear-gradient(135deg,#1a4d32,#0f6b37);
+    display:flex;align-items:center;justify-content:center;
+    font-size:13px;font-weight:800;color:var(--up);letter-spacing:-0.5px;
+  }
+  .brand-name{font-size:15px;font-weight:700;color:var(--text)}
+  .back-btn{
+    display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:8px;
+    background:var(--panel);border:1px solid var(--line);
+    color:var(--dim);font-size:12px;font-family:var(--mono);cursor:pointer;
+    text-decoration:none;transition:color .15s,border-color .15s;
+  }
+  .back-btn:hover{color:var(--text);border-color:var(--muted)}
+  .topbar-right{display:flex;align-items:center;gap:10px}
+  .refresh-btn{
+    display:flex;align-items:center;justify-content:center;
+    width:32px;height:32px;border-radius:8px;border:1px solid var(--line);
+    background:var(--panel);cursor:pointer;color:var(--dim);font-size:14px;
+    transition:color .15s;
+  }
+  .refresh-btn:hover{color:var(--text)}
+
+  /* ── Content ── */
+  .content{max-width:1360px;margin:0 auto;padding:32px 40px 60px}
+
+  /* ── Host header ── */
+  .host-header{margin-bottom:28px}
+  .host-name{font-size:24px;font-weight:700;display:flex;align-items:center;gap:10px}
+  .status-dot{
+    width:10px;height:10px;border-radius:50%;background:var(--up);
+    animation:pulse 2s ease-in-out infinite;flex-shrink:0;
+  }
+  .status-dot.offline{background:var(--down);animation:blink 1.3s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.5)}}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+  .host-meta{margin-top:6px;color:var(--muted);font-size:12px;font-family:var(--mono);display:flex;gap:16px;flex-wrap:wrap}
+  .host-meta span{display:flex;align-items:center;gap:5px}
+
+  /* ── Grid ── */
+  .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:16px}
+  .grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-bottom:16px}
+  .grid-1{display:grid;grid-template-columns:1fr;gap:16px;margin-bottom:16px}
+  @media(max-width:1000px){.grid-3{grid-template-columns:1fr 1fr}}
+  @media(max-width:640px){.grid-3,.grid-2{grid-template-columns:1fr}}
+
+  /* ── Panel ── */
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px}
+  .panel-title{
+    font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--muted);margin-bottom:16px;display:flex;align-items:center;gap:8px;
+  }
+  .panel-title svg{opacity:.7}
+
+  /* ── Stat (big number) ── */
+  .stat-value{font-size:32px;font-weight:800;line-height:1;letter-spacing:-1px}
+  .stat-value.cpu{color:var(--cpu)}
+  .stat-value.mem{color:var(--mem)}
+  .stat-value.disk{color:var(--disk)}
+  .stat-sub{font-size:12px;color:var(--dim);font-family:var(--mono);margin-top:6px}
+
+  /* ── Gauge bar ── */
+  .gauge{height:6px;background:var(--line);border-radius:3px;margin-top:14px;overflow:hidden}
+  .gauge-fill{height:100%;border-radius:3px;transition:width .4s ease}
+  .gauge-fill.cpu{background:var(--cpu)}
+  .gauge-fill.mem{background:var(--mem)}
+  .gauge-fill.disk{background:var(--disk)}
+
+  /* ── Sparkline canvas ── */
+  .sparkline{display:block;width:100%;height:70px;margin-top:14px;border-radius:6px}
+
+  /* ── Uptime ── */
+  .uptime-display{text-align:center;padding:10px 0 4px}
+  .uptime-big{font-size:40px;font-weight:800;color:var(--up);letter-spacing:-2px;line-height:1}
+  .uptime-label{font-size:11px;color:var(--muted);font-family:var(--mono);margin-top:6px;letter-spacing:.06em;text-transform:uppercase}
+
+  /* ── Network interfaces ── */
+  .iface-list{display:flex;flex-direction:column;gap:10px}
+  .iface{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:10px 12px;background:var(--panel2);border-radius:8px;border:1px solid var(--line);
+  }
+  .iface-left{display:flex;align-items:center;gap:10px}
+  .iface-name{font-size:13px;font-weight:600}
+  .iface-ip{font-size:11px;color:var(--muted);font-family:var(--mono);margin-top:2px}
+  .pill-small{
+    font-size:10px;font-weight:700;padding:3px 8px;border-radius:10px;
+    font-family:var(--mono);letter-spacing:.05em;
+  }
+  .pill-up{background:var(--up-dim);color:var(--up)}
+  .pill-down{background:var(--down-dim);color:var(--down)}
+  .pill-unknown{background:#1e2030;color:var(--muted)}
+
+  /* ── System info ── */
+  .sysinfo-list{display:flex;flex-direction:column;gap:12px}
+  .sysinfo-row{display:flex;flex-direction:column;gap:3px}
+  .sysinfo-label{font-size:10px;color:var(--muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em}
+  .sysinfo-val{font-size:13px;font-weight:500;color:var(--text)}
+
+  /* ── Sessions ── */
+  .session-stats{display:flex;gap:20px;margin-bottom:14px}
+  .session-stat{display:flex;flex-direction:column;gap:4px}
+  .session-stat-val{font-size:24px;font-weight:800;color:var(--up)}
+  .session-stat-label{font-size:11px;color:var(--muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em}
+  .sessions-table{width:100%;border-collapse:collapse}
+  .sessions-table th{font-size:10px;color:var(--muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;padding:6px 8px;text-align:left;border-bottom:1px solid var(--line)}
+  .sessions-table td{font-size:12px;color:var(--dim);padding:8px 8px;border-bottom:1px solid rgba(255,255,255,.03);font-family:var(--mono)}
+  .sessions-table td:first-child{color:var(--text);font-weight:600}
+  .sessions-table tr:last-child td{border-bottom:none}
+  .no-sessions{color:var(--muted);font-size:12px;font-family:var(--mono);padding:12px 0;text-align:center}
+
+  /* ── Net throughput ── */
+  .net-stats{display:flex;flex-direction:column;gap:8px}
+  .net-row{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--panel2);border-radius:8px;border:1px solid var(--line)}
+  .net-iface{font-size:12px;font-weight:600;font-family:var(--mono)}
+  .net-vals{display:flex;gap:16px}
+  .net-val{font-size:11px;color:var(--muted);font-family:var(--mono)}
+  .net-val span{color:var(--dim)}
+
+  /* ── Loading / error ── */
+  .loading{text-align:center;padding:80px 20px;color:var(--muted);font-family:var(--mono);font-size:13px}
+  .error-banner{background:var(--down-dim);border:1px solid var(--down);border-radius:10px;padding:14px 18px;color:var(--down);font-size:13px;margin-bottom:20px;font-family:var(--mono)}
+  .stale-banner{background:#1e1e0a;border:1px solid var(--pending);border-radius:10px;padding:10px 16px;color:var(--pending);font-size:12px;margin-bottom:16px;font-family:var(--mono)}
+
+  .footer{text-align:center;padding:18px;color:var(--muted);font-size:11px;font-family:var(--mono);border-top:1px solid var(--line);margin-top:20px}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-logo">UP</div>
+    <div class="brand-name">UpMon</div>
+  </div>
+  <div class="topbar-right">
+    <a href="/" class="back-btn">← Status Page</a>
+    <button class="refresh-btn" id="refreshBtn" title="Refresh">↻</button>
+  </div>
+</div>
+
+<div class="content" id="content">
+  <div class="loading">Loading host metrics…</div>
+</div>
+
+<div class="footer">Last updated <span id="updatedAt">—</span> · Auto-refreshing every 15s</div>
+
+<script>
+const hostId = location.pathname.split('/').pop();
+let metrics = null;
+let cpuHistoryLocal = [];
+
+function fmtBytes(bytes, decimals=1){
+  if(!bytes) return '0 B';
+  const k=1024, dm=decimals<0?0:decimals;
+  const sizes=['B','KB','MB','GB','TB'];
+  const i=Math.floor(Math.log(bytes)/Math.log(k));
+  return parseFloat((bytes/Math.pow(k,i)).toFixed(dm))+' '+sizes[i];
+}
+
+function fmtUptime(sec){
+  const d=Math.floor(sec/86400), h=Math.floor((sec%86400)/3600), m=Math.floor((sec%3600)/60);
+  if(d>0) return `${d}d ${h}h ${m}m`;
+  if(h>0) return `${h}h ${m}m`;
+  return `${m}m`;
+}
+
+function fmtBps(bps){
+  if(bps===null||bps===undefined||bps<0) return '—';
+  return fmtBytes(bps)+'/s';
+}
+
+function ifacePill(state){
+  if(state==='up') return `<span class="pill-small pill-up">UP</span>`;
+  if(state==='down') return `<span class="pill-small pill-down">DOWN</span>`;
+  return `<span class="pill-small pill-unknown">${(state||'UNKNOWN').toUpperCase()}</span>`;
+}
+
+function drawSparkline(canvas, data, color){
+  const dpr = window.devicePixelRatio||1;
+  const w=canvas.clientWidth||canvas.width, h=canvas.clientHeight||canvas.height;
+  canvas.width=w*dpr; canvas.height=h*dpr;
+  const ctx=canvas.getContext('2d');
+  ctx.scale(dpr,dpr);
+  if(!data||data.length<2){return;}
+  const max=100, min=0;
+  const pts=data.slice(-50);
+  const step=w/(pts.length-1);
+
+  ctx.beginPath();
+  pts.forEach((v,i)=>{
+    const x=i*step;
+    const y=h-((v-min)/(max-min))*(h-4)-2;
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  });
+  ctx.strokeStyle=color; ctx.lineWidth=1.5; ctx.stroke();
+
+  // Fill
+  ctx.lineTo((pts.length-1)*step,h); ctx.lineTo(0,h); ctx.closePath();
+  const grad=ctx.createLinearGradient(0,0,0,h);
+  grad.addColorStop(0,color+'33'); grad.addColorStop(1,color+'00');
+  ctx.fillStyle=grad; ctx.fill();
+}
+
+function gaugeColor(pct){
+  if(pct>85) return 'var(--down)';
+  if(pct>65) return 'var(--pending)';
+  return null; // use class default
+}
+
+function render(m){
+  const isStale = m.stale;
+  const cpu=m.cpu||{}, mem=m.memory||{};
+  const disks=m.disks||[];
+  const ifaces=m.interfaces||[];
+  const net=m.net||[];
+  const sessions=m.sessions||{};
+  const mainDisk=disks[0]||{};
+
+  document.title = (m.hostname||'Host')+' — UpMon';
+
+  const staleHtml = isStale ? `<div class="stale-banner">⚠ Agent unreachable — showing last known data</div>` : '';
+
+  document.getElementById('content').innerHTML = `
+    ${staleHtml}
+    <div class="host-header">
+      <div class="host-name">
+        <div class="status-dot${isStale?' offline':''}"></div>
+        ${m.hostname||'Unknown Host'}
+      </div>
+      <div class="host-meta">
+        <span>⬆ ${fmtUptime(m.uptime_seconds||0)}</span>
+        <span>${m.distro||''} ${m.release||''}</span>
+        <span>Kernel ${m.kernel||'—'}</span>
+        <span>${m.arch||''}</span>
+      </div>
+    </div>
+
+    <!-- Row 1: CPU / Memory / Disk -->
+    <div class="grid-3">
+      <div class="panel">
+        <div class="panel-title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M15 2v2M9 2v2M15 20v2M9 20v2M2 15h2M2 9h2M20 15h2M20 9h2"/></svg>
+          CPU Usage
+        </div>
+        <div class="stat-value cpu">${cpu.load||0}%</div>
+        <div class="stat-sub">${cpu.cores||'?'} cores · ${cpu.brand||''}</div>
+        <div class="stat-sub" style="margin-top:4px">Load avg: ${(cpu.loadAvg||[0,0,0]).map(v=>v.toFixed(2)).join(', ')}</div>
+        <div class="gauge"><div class="gauge-fill cpu" id="cpuGauge" style="width:${cpu.load||0}%;${gaugeColor(cpu.load)?'background:'+gaugeColor(cpu.load):''}"></div></div>
+        <canvas class="sparkline" id="cpuCanvas"></canvas>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 19v-3M10 19v-8M14 19v-5M18 19v-11"/></svg>
+          Memory Usage
+        </div>
+        <div class="stat-value mem">${mem.usedPercent||0}%</div>
+        <div class="stat-sub">${fmtBytes(mem.used)} / ${fmtBytes(mem.total)} <span style="opacity:0.5;font-size:0.85em">(+${fmtBytes(mem.buffersCache||0)} cache)</span></div>
+        <div class="stat-sub" style="margin-top:4px">Free: ${fmtBytes(mem.available)}</div>
+        <div class="gauge"><div class="gauge-fill mem" style="width:${mem.usedPercent||0}%;${gaugeColor(mem.usedPercent)?'background:'+gaugeColor(mem.usedPercent):''}"></div></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+          Disk Usage
+        </div>
+        <div class="stat-value disk">${mainDisk.use||0}%</div>
+        <div class="stat-sub">${fmtBytes(mainDisk.used)} / ${fmtBytes(mainDisk.size)}</div>
+        <div class="stat-sub" style="margin-top:4px">Available: ${fmtBytes(mainDisk.available)}</div>
+        <div class="gauge"><div class="gauge-fill disk" style="width:${mainDisk.use||0}%;${gaugeColor(mainDisk.use)?'background:'+gaugeColor(mainDisk.use):''}"></div></div>
+        ${disks.length>1?`<div class="stat-sub" style="margin-top:10px">${disks.length} mount points</div>`:''}
+      </div>
+    </div>
+
+    <!-- Row 2: Network / Uptime / System Info -->
+    <div class="grid-3">
+      <div class="panel">
+        <div class="panel-title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1"/></svg>
+          Network Interfaces
+        </div>
+        <div class="iface-list">
+          ${ifaces.length===0?'<div class="no-sessions">No interfaces</div>':ifaces.map(n=>`
+            <div class="iface">
+              <div class="iface-left">
+                <div>
+                  <div class="iface-name">${n.name}</div>
+                  <div class="iface-ip">${n.ip4||n.ip6||'—'}</div>
+                </div>
+              </div>
+              ${ifacePill(n.operstate)}
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Uptime
+        </div>
+        <div class="uptime-display">
+          <div class="uptime-big">${fmtUptime(m.uptime_seconds||0)}</div>
+          <div class="uptime-label">Total Uptime</div>
+          <div class="stat-sub" style="margin-top:10px">${(m.uptime_seconds||0).toLocaleString()} seconds</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+          System Information
+        </div>
+        <div class="sysinfo-list">
+          <div class="sysinfo-row">
+            <div class="sysinfo-label">Hostname</div>
+            <div class="sysinfo-val">${m.hostname||'—'}</div>
+          </div>
+          <div class="sysinfo-row">
+            <div class="sysinfo-label">Operating System</div>
+            <div class="sysinfo-val">${m.distro||''} ${m.release||''}</div>
+          </div>
+          <div class="sysinfo-row">
+            <div class="sysinfo-label">Kernel</div>
+            <div class="sysinfo-val">${m.kernel||'—'}</div>
+          </div>
+          <div class="sysinfo-row">
+            <div class="sysinfo-label">Architecture</div>
+            <div class="sysinfo-val">${m.arch||'—'}</div>
+          </div>
+          <div class="sysinfo-row">
+            <div class="sysinfo-label">CPU</div>
+            <div class="sysinfo-val">${cpu.brand||'—'}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 3: SSH Sessions / Net Throughput -->
+    <div class="grid-2">
+      <div class="panel">
+        <div class="panel-title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          SSH Sessions
+        </div>
+        <div class="session-stats">
+          <div class="session-stat">
+            <div class="session-stat-val">${sessions.total||0}</div>
+            <div class="session-stat-label">Total</div>
+          </div>
+          <div class="session-stat">
+            <div class="session-stat-val" style="color:var(--cpu)">${sessions.ssh||0}</div>
+            <div class="session-stat-label">SSH (pts)</div>
+          </div>
+        </div>
+        ${(sessions.users||[]).length>0?`
+          <table class="sessions-table">
+            <thead><tr><th>User</th><th>From IP</th><th>Since</th></tr></thead>
+            <tbody>
+              ${(sessions.users||[]).map(u=>`
+                <tr>
+                  <td>${u.user||'?'}</td>
+                  <td>${u.ip||'local'}</td>
+                  <td>${u.date?new Date(u.date).toLocaleTimeString():''}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `:`<div class="no-sessions">No active SSH sessions</div>`}
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Network Throughput
+        </div>
+        <div class="net-stats">
+          ${net.length===0?'<div class="no-sessions">No data</div>':net.map(n=>`
+            <div class="net-row">
+              <div class="net-iface">${n.iface}</div>
+              <div class="net-vals">
+                <div class="net-val">↓ <span>${fmtBps(n.rx_sec)}</span></div>
+                <div class="net-val">↑ <span>${fmtBps(n.tx_sec)}</span></div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Draw CPU sparkline
+  const history = cpu.history||[];
+  cpuHistoryLocal = [...history];
+  const canvas = document.getElementById('cpuCanvas');
+  if(canvas) {
+    requestAnimationFrame(()=>{
+      canvas.style.width='100%';
+      canvas.style.height='70px';
+      drawSparkline(canvas, cpuHistoryLocal, '#3b82f6');
+    });
+  }
+
+  document.getElementById('updatedAt').textContent = new Date().toLocaleTimeString();
+}
+
+async function load(){
+  try {
+    const r = await fetch(`/api/hosts/${hostId}/metrics`, {credentials:'include'});
+    if(r.status===401){ location.href='/admin'; return; }
+    if(!r.ok) throw new Error(await r.text());
+    metrics = await r.json();
+    render(metrics);
+  } catch(e) {
+    const c=document.getElementById('content');
+    c.innerHTML=`<div class="error-banner">⚠ Failed to load metrics: ${e.message}</div>`;
+  }
+}
+
+document.getElementById('refreshBtn').addEventListener('click', load);
+load();
+setInterval(load, 15000);
+</script>
+</body>
+</html>

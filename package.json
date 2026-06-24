@@ -1,0 +1,23 @@
+{
+  "name": "upmon",
+  "version": "2.0.0",
+  "description": "Lightweight self-hosted uptime monitor with admin dashboard and public TV status page",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "license": "ISC",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "better-sqlite3": "^9.4.3",
+    "express": "^4.22.2",
+    "express-session": "^1.18.0",
+    "ioredis": "^5.4.1",
+    "mysql2": "^3.11.0",
+    "pg": "^8.13.0",
+    "systeminformation": "^5.31.9",
+    "ws": "^8.18.0"
+  }
+}

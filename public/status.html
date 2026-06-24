@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Status</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+/* ══════════════════════════════════════════════
+   THEMES  — each sets full palette + personality
+   ══════════════════════════════════════════════ */
+
+/* Dark (default) */
+:root{
+  --bg:#0a0c10;--panel:#12151c;--panel2:#181c26;--panel3:#1f2430;
+  --line:#232838;--line2:#2c3344;
+  --text:#e8ecf4;--muted:#5b6478;--dim:#838ea3;
+  --up:#2ee37e;--up-dim:#0a2518;--down:#ff4d5e;--down-dim:#2d0a10;
+  --pending:#f5b942;--pending-dim:#2d2008;
+  --accent:#3b82f6;--accent-dim:#1a3260;
+  --card-glow-up:rgba(46,227,126,.08);
+  --card-glow-down:rgba(255,77,94,.12);
+  --hero-up:linear-gradient(120deg,#0a2518,var(--panel) 70%);
+  --hero-down:linear-gradient(120deg,#2d0a10,var(--panel) 70%);
+  --font:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --mono:'JetBrains Mono','SF Mono',Consolas,monospace;
+  --radius:12px;--bar-h:4px;
+}
+
+/* Light */
+[data-theme="light"]{
+  --bg:#f0f2f7;--panel:#ffffff;--panel2:#f5f7fb;--panel3:#eaedf4;
+  --line:#dde1ec;--line2:#c8cdd9;--text:#1a1d26;--muted:#8890a4;--dim:#5a6177;
+  --up:#16a349;--up-dim:#dcfce7;--down:#dc2626;--down-dim:#fee2e2;
+  --pending:#d97706;--pending-dim:#fef3c7;--accent:#2563eb;--accent-dim:#dbeafe;
+  --card-glow-up:rgba(22,163,74,.06);--card-glow-down:rgba(220,38,38,.08);
+  --hero-up:linear-gradient(120deg,#dcfce7,var(--panel) 70%);
+  --hero-down:linear-gradient(120deg,#fee2e2,var(--panel) 70%);
+}
+
+/* Dracula */
+[data-theme="dracula"]{
+  --bg:#1a1b26;--panel:#21222c;--panel2:#2d2f3f;--panel3:#343647;
+  --line:#3a3d52;--line2:#44475a;--text:#f8f8f2;--muted:#6272a4;--dim:#bd93f9;
+  --up:#50fa7b;--up-dim:#0d2e18;--down:#ff5555;--down-dim:#3a1010;
+  --pending:#ffb86c;--pending-dim:#3a2800;--accent:#bd93f9;--accent-dim:#2d1f5e;
+  --card-glow-up:rgba(80,250,123,.1);--card-glow-down:rgba(255,85,85,.14);
+  --hero-up:linear-gradient(120deg,#0d2e18,var(--panel) 65%);
+  --hero-down:linear-gradient(120deg,#3a1010,var(--panel) 65%);
+}
+
+/* Nord */
+[data-theme="nord"]{
+  --bg:#242933;--panel:#2e3440;--panel2:#3b4252;--panel3:#434c5e;
+  --line:#3b4252;--line2:#434c5e;--text:#eceff4;--muted:#4c566a;--dim:#81a1c1;
+  --up:#a3be8c;--up-dim:#1e2e18;--down:#bf616a;--down-dim:#2e1618;
+  --pending:#ebcb8b;--pending-dim:#2e2810;--accent:#81a1c1;--accent-dim:#1e2e40;
+  --card-glow-up:rgba(163,190,140,.08);--card-glow-down:rgba(191,97,106,.1);
+  --hero-up:linear-gradient(120deg,#1e2e18,var(--panel) 70%);
+  --hero-down:linear-gradient(120deg,#2e1618,var(--panel) 70%);
+}
+
+/* Catppuccin Mocha */
+[data-theme="catppuccin"]{
+  --bg:#11111b;--panel:#1e1e2e;--panel2:#181825;--panel3:#313244;
+  --line:#313244;--line2:#45475a;--text:#cdd6f4;--muted:#6c7086;--dim:#a6adc8;
+  --up:#a6e3a1;--up-dim:#1a2e1a;--down:#f38ba8;--down-dim:#2e1a20;
+  --pending:#f9e2af;--pending-dim:#2e2a18;--accent:#cba6f7;--accent-dim:#2a1e3e;
+  --card-glow-up:rgba(166,227,161,.08);--card-glow-down:rgba(243,139,168,.1);
+  --hero-up:linear-gradient(120deg,#1a2e1a,var(--panel) 70%);
+  --hero-down:linear-gradient(120deg,#2e1a20,var(--panel) 70%);
+}
+
+/* Gruvbox */
+[data-theme="gruvbox"]{
+  --bg:#1d2021;--panel:#282828;--panel2:#3c3836;--panel3:#504945;
+  --line:#3c3836;--line2:#504945;--text:#ebdbb2;--muted:#7c6f64;--dim:#a89984;
+  --up:#b8bb26;--up-dim:#202300;--down:#fb4934;--down-dim:#380d08;
+  --pending:#fabd2f;--pending-dim:#382800;--accent:#fe8019;--accent-dim:#3a2008;
+  --card-glow-up:rgba(184,187,38,.1);--card-glow-down:rgba(251,73,52,.12);
+  --hero-up:linear-gradient(120deg,#202300,var(--panel) 70%);
+  --hero-down:linear-gradient(120deg,#380d08,var(--panel) 70%);
+}
+
+/* Solarized Dark */
+[data-theme="solarized"]{
+  --bg:#001e26;--panel:#002b36;--panel2:#073642;--panel3:#094351;
+  --line:#0d4a56;--line2:#155060;--text:#93a1a1;--muted:#586e75;--dim:#839496;
+  --up:#859900;--up-dim:#172000;--down:#dc322f;--down-dim:#320a08;
+  --pending:#b58900;--pending-dim:#2a2000;--accent:#268bd2;--accent-dim:#0a2040;
+  --card-glow-up:rgba(133,153,0,.1);--card-glow-down:rgba(220,50,47,.12);
+  --hero-up:linear-gradient(120deg,#172000,var(--panel) 70%);
+  --hero-down:linear-gradient(120deg,#320a08,var(--panel) 70%);
+}
+
+/* Ayu Dark */
+[data-theme="ayu"]{
+  --bg:#0d1017;--panel:#0f1420;--panel2:#131b2a;--panel3:#1a2540;
+  --line:#1e2d44;--line2:#253550;--text:#bfbdb6;--muted:#4a5568;--dim:#7a8a9a;
+  --up:#aad94c;--up-dim:#1a2800;--down:#f07178;--down-dim:#2e1018;
+  --pending:#ffb454;--pending-dim:#2e2200;--accent:#39bae6;--accent-dim:#0a2838;
+  --card-glow-up:rgba(170,217,76,.08);--card-glow-down:rgba(240,113,120,.1);
+  --hero-up:linear-gradient(120deg,#1a2800,var(--panel) 70%);
+  --hero-down:linear-gradient(120deg,#2e1018,var(--panel) 70%);
+}
+
+/* Cyberpunk */
+[data-theme="cyberpunk"]{
+  --bg:#05050f;--panel:#0a0a1a;--panel2:#0f0f22;--panel3:#15152e;
+  --line:#1e1e3a;--line2:#28286a;--text:#e0e0ff;--muted:#4040a0;--dim:#8080d0;
+  --up:#00ff88;--up-dim:#002a18;--down:#ff0066;--down-dim:#2a0018;
+  --pending:#ffcc00;--pending-dim:#2a2200;--accent:#00ccff;--accent-dim:#002838;
+  --card-glow-up:rgba(0,255,136,.12);--card-glow-down:rgba(255,0,102,.15);
+  --hero-up:linear-gradient(120deg,#002a18,var(--panel) 65%);
+  --hero-down:linear-gradient(120deg,#2a0018,var(--panel) 65%);
+}
+
+/* ── Base ── */
+html,body{height:100%}
+body{
+  background:var(--bg);color:var(--text);font-family:var(--font);
+  min-height:100vh;display:flex;flex-direction:column;transition:background .35s,color .25s;
+}
+::selection{background:var(--accent);color:#fff}
+
+/* ── Topbar ── */
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:18px 32px 14px;flex-wrap:wrap;gap:12px;
+  border-bottom:1px solid var(--line);
+}
+.brand{display:flex;align-items:center;gap:12px}
+.brand-mark{
+  width:34px;height:34px;border-radius:9px;
+  background:linear-gradient(135deg,var(--up),#1aa860);
+  display:flex;align-items:center;justify-content:center;
+  font-weight:800;font-size:15px;color:#06140d;flex-shrink:0;
+}
+[data-theme="dracula"] .brand-mark,[data-theme="cyberpunk"] .brand-mark{color:#fff}
+.brand-text{font-size:15px;font-weight:700}
+.brand-sub{font-size:11px;color:var(--muted);font-family:var(--mono);margin-top:1px}
+.topbar-right{display:flex;align-items:center;gap:12px}
+.clock{font-family:var(--mono);font-size:13px;color:var(--dim);text-align:right}
+.clock .date{color:var(--muted);font-size:11px;margin-top:2px}
+.icon-btn{
+  width:34px;height:34px;border-radius:8px;border:1px solid var(--line);
+  background:var(--panel);display:flex;align-items:center;justify-content:center;
+  cursor:pointer;color:var(--muted);transition:all .15s;flex-shrink:0;
+}
+.icon-btn:hover{border-color:var(--accent);color:var(--text)}
+.icon-btn.active{border-color:var(--accent);color:var(--accent);background:var(--accent-dim)}
+.icon-btn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8}
+
+/* ── Settings drawer ── */
+.settings-panel{
+  border-bottom:1px solid transparent;background:var(--panel);
+  max-height:0;overflow:hidden;opacity:0;
+  transition:max-height .3s ease,opacity .25s ease,border-color .3s;
+}
+.settings-panel.open{max-height:300px;opacity:1;border-bottom-color:var(--line)}
+.settings-inner{
+  padding:14px 32px;display:flex;align-items:center;
+  gap:10px;flex-wrap:wrap;
+}
+.tb-label{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+.tb-sep{width:1px;height:20px;background:var(--line);flex-shrink:0}
+.row-group{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.tb-btn{
+  height:26px;padding:0 10px;border-radius:6px;border:1px solid var(--line);
+  background:transparent;color:var(--dim);cursor:pointer;font-size:11px;font-weight:600;
+  transition:all .15s;font-family:var(--mono);white-space:nowrap;
+}
+.tb-btn:hover{border-color:var(--accent);color:var(--text)}
+.tb-btn.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
+.tb-btn-icon{
+  width:28px;height:26px;border-radius:6px;border:1px solid var(--line);
+  background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:all .15s;
+}
+.tb-btn-icon:hover{border-color:var(--accent)}
+.tb-btn-icon.active{background:var(--accent-dim);border-color:var(--accent)}
+.tb-btn-icon svg{width:12px;height:12px;fill:none;stroke:var(--dim);stroke-width:1.8}
+.tb-btn-icon.active svg{stroke:var(--accent)}
+.theme-dots{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
+.theme-dot{
+  width:20px;height:20px;border-radius:50%;cursor:pointer;
+  border:2px solid transparent;transition:all .15s;flex-shrink:0;
+  position:relative;
+}
+.theme-dot:hover{border-color:var(--text);transform:scale(1.15)}
+.theme-dot.active{border-color:var(--text);transform:scale(1.15)}
+.theme-dot .dot-label{
+  position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);
+  font-size:9px;color:var(--muted);white-space:nowrap;pointer-events:none;
+  opacity:0;transition:opacity .15s;font-family:var(--mono);
+}
+.theme-dot:hover .dot-label{opacity:1}
+.accent-dot{
+  width:16px;height:16px;border-radius:50%;cursor:pointer;
+  border:2px solid transparent;transition:all .15s;
+}
+.accent-dot:hover,.accent-dot.active{border-color:var(--text);transform:scale(1.2)}
+.tb-select{
+  height:26px;padding:0 8px;border-radius:6px;border:1px solid var(--line);
+  background:var(--panel2);color:var(--dim);font-size:11px;font-family:var(--mono);
+  cursor:pointer;outline:none;transition:border-color .15s;
+}
+.tb-select:hover,.tb-select:focus{border-color:var(--accent);color:var(--text)}
+.toggle-wrap{display:flex;align-items:center;gap:6px;cursor:pointer}
+.toggle-label{font-size:11px;color:var(--muted);font-family:var(--mono);white-space:nowrap}
+.toggle{width:30px;height:17px;border-radius:9px;background:var(--line);position:relative;transition:background .2s;flex-shrink:0}
+.toggle.on{background:var(--accent)}
+.toggle::after{content:'';position:absolute;width:13px;height:13px;border-radius:50%;background:#fff;top:2px;left:2px;transition:left .2s}
+.toggle.on::after{left:15px}
+
+/* ── Hero ── */
+.hero{
+  margin:20px 32px 16px;padding:22px 28px;border-radius:16px;
+  display:flex;align-items:center;gap:18px;
+  border:1px solid var(--line);transition:all .4s;
+}
+.hero.up{background:var(--hero-up);border-color:var(--up-dim)}
+.hero.down{background:var(--hero-down);border-color:var(--down-dim)}
+.hero.unknown{background:var(--panel)}
+.hero-icon{
+  width:52px;height:52px;border-radius:50%;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:26px;
+}
+.hero.up .hero-icon{background:rgba(46,227,126,.15);color:var(--up)}
+.hero.down .hero-icon{background:rgba(255,77,94,.15);color:var(--down)}
+.hero.unknown .hero-icon{background:var(--panel2);color:var(--muted)}
+.hero-title{font-size:36px;font-weight:800;letter-spacing:-.01em}
+.hero-sub{font-size:14px;color:var(--dim);margin-top:4px;font-family:var(--mono)}
+
+/* ── Content ── */
+.content{flex:1;padding:0 32px 24px}
+.group-title{
+  font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--muted);margin:20px 0 10px;display:flex;align-items:center;gap:10px;
+}
+.group-title::after{content:'';flex:1;height:1px;background:var(--line)}
+
+/* ── Grid ── */
+.grid{display:grid;grid-template-columns:repeat(var(--cols,2),minmax(0,1fr));gap:12px}
+.grid.auto-cols{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
+.grid.list-view{grid-template-columns:1fr;gap:6px}
+
+/* ── Card ── */
+.card{
+  background:var(--panel);border:1px solid var(--line);
+  border-radius:var(--radius);padding:18px 20px;
+  position:relative;overflow:hidden;
+  transition:border-color .25s,transform .15s,box-shadow .25s,background .3s;
+  cursor:default;
+}
+.card:hover{transform:translateY(-2px)}
+.card.up:hover{box-shadow:0 8px 32px var(--card-glow-up)}
+.card.down:hover{box-shadow:0 8px 32px var(--card-glow-down)}
+
+/* Left accent bar */
+.card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;transition:width .25s,box-shadow .25s}
+.card.up::before{background:var(--up)}
+.card.down::before{
+  background:var(--down);
+  box-shadow:0 0 14px var(--down),0 0 28px var(--down);
+  width:4px;
+  animation:barPulse 2s ease-in-out infinite;
+}
+.card.pending::before{background:var(--pending);animation:barBlink 1.5s ease-in-out infinite}
+
+@keyframes barPulse{
+  0%,100%{box-shadow:0 0 8px var(--down),0 0 16px var(--down);opacity:1}
+  50%{box-shadow:0 0 20px var(--down),0 0 40px var(--down);opacity:.7}
+}
+@keyframes barBlink{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* Card background tint on down */
+.card.down{
+  background:linear-gradient(to right,var(--card-glow-down),var(--panel) 40%);
+  border-color:rgba(255,77,94,.25);
+}
+
+body.compact .card{padding:10px 14px}
+body.large .card{padding:24px 26px;min-height:150px}
+
+.grid.list-view .card{
+  display:flex;align-items:center;gap:16px;
+  padding:10px 16px;border-radius:8px;
+}
+.grid.list-view .card-head{margin-bottom:0;flex:1}
+.grid.list-view .card-foot{margin-left:auto;flex-shrink:0;text-align:right}
+.grid.list-view .status-bar-wrap{display:none}
+
+.card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px}
+.card-name{font-size:17px;font-weight:700}
+body.compact .card-name{font-size:14px}
+body.large .card-name{font-size:22px}
+.card-type{font-size:10px;color:var(--muted);font-family:var(--mono);text-transform:uppercase;margin-top:3px;letter-spacing:.06em}
+
+/* pill */
+.pill{
+  font-size:10px;font-weight:700;letter-spacing:.05em;padding:4px 9px;border-radius:20px;
+  display:flex;align-items:center;gap:5px;flex-shrink:0;font-family:var(--mono);
+  transition:all .2s;
+}
+.pill.up{background:var(--up-dim);color:var(--up)}
+.pill.down{background:var(--down-dim);color:var(--down);animation:pillGlow 2s ease-in-out infinite}
+.pill.pending{background:var(--pending-dim);color:var(--pending)}
+@keyframes pillGlow{
+  0%,100%{box-shadow:0 0 0 0 transparent}
+  50%{box-shadow:0 0 0 3px rgba(255,77,94,.2)}
+}
+.pill-dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+.pill.down .pill-dot{animation:dotBlink 1.2s ease-in-out infinite}
+.pill.up .pill-dot{animation:dotPulse 2.5s ease-in-out infinite}
+@keyframes dotBlink{0%,100%{opacity:1}50%{opacity:.15}}
+@keyframes dotPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.6)}}
+
+/* card footer */
+.card-foot{
+  display:flex;align-items:center;justify-content:space-between;
+  font-size:11px;color:var(--dim);font-family:var(--mono);margin-top:8px;
+}
+.card.down .card-foot{color:rgba(255,77,94,.6)}
+
+/* ── Status bar (the progress line) ── */
+.status-bar-wrap{
+  position:absolute;bottom:0;left:0;right:0;height:var(--bar-h);
+  background:var(--line);overflow:hidden;
+}
+.status-bar{
+  height:100%;border-radius:0;
+  transition:width .6s cubic-bezier(.4,0,.2,1),background .4s;
+}
+/* UP: green fill proportional to uptime */
+.status-bar.up{background:var(--up)}
+/* DOWN: full red bar with animated shimmer */
+.status-bar.down{
+  width:100%!important;
+  background:linear-gradient(90deg,var(--down) 0%,#ff8090 50%,var(--down) 100%);
+  background-size:200% 100%;
+  animation:shimmerDown 1.5s linear infinite;
+}
+/* PENDING: amber pulse */
+.status-bar.pending{
+  width:100%!important;
+  background:var(--pending);
+  animation:pendingPulse 1.8s ease-in-out infinite;
+}
+@keyframes shimmerDown{
+  0%{background-position:200% 0}
+  100%{background-position:-200% 0}
+}
+@keyframes pendingPulse{0%,100%{opacity:.4}50%{opacity:1}}
+
+/* no-data: subtle dash */
+.status-bar.empty{width:0;background:transparent}
+
+.empty{text-align:center;padding:80px 20px;color:var(--muted)}
+.empty-icon{font-size:40px;margin-bottom:14px;opacity:.4}
+
+.footer{
+  text-align:center;padding:14px;color:var(--muted);font-size:11px;
+  font-family:var(--mono);border-top:1px solid var(--line);
+}
+
+@media(max-width:700px){
+  .topbar,.content{padding-left:16px;padding-right:16px}
+  .hero{margin-left:12px;margin-right:12px;padding:16px 18px}
+  .settings-inner{padding:12px 16px}
+  .content{padding-left:12px;padding-right:12px}
+  .hero-title{font-size:24px}
+  .grid{grid-template-columns:1fr!important}
+}
+</style>
+</head>
+<body class="default">
+
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-mark">UP</div>
+    <div>
+      <div class="brand-text">Infrastructure Status</div>
+      <div class="brand-sub" id="svc-count">— monitors</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="clock">
+      <div id="time">--:--:--</div>
+      <div class="date" id="date">—</div>
+    </div>
+    <button class="icon-btn" id="settings-btn" title="Display settings">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+    </button>
+  </div>
+</div>
+
+<div class="settings-panel" id="settings-panel">
+  <div class="settings-inner">
+
+    <span class="tb-label">Theme</span>
+    <div class="theme-dots" id="theme-dots">
+      <div class="theme-dot active" data-theme="dark"       style="background:linear-gradient(135deg,#0a0c10,#232838)" title="Dark"><span class="dot-label">Dark</span></div>
+      <div class="theme-dot"        data-theme="light"      style="background:linear-gradient(135deg,#f0f2f7,#dde1ec)" title="Light"><span class="dot-label">Light</span></div>
+      <div class="theme-dot"        data-theme="dracula"    style="background:linear-gradient(135deg,#1a1b26,#bd93f9)" title="Dracula"><span class="dot-label">Dracula</span></div>
+      <div class="theme-dot"        data-theme="catppuccin" style="background:linear-gradient(135deg,#11111b,#cba6f7)" title="Catppuccin"><span class="dot-label">Catppuccin</span></div>
+      <div class="theme-dot"        data-theme="nord"       style="background:linear-gradient(135deg,#242933,#81a1c1)" title="Nord"><span class="dot-label">Nord</span></div>
+      <div class="theme-dot"        data-theme="gruvbox"    style="background:linear-gradient(135deg,#1d2021,#fe8019)" title="Gruvbox"><span class="dot-label">Gruvbox</span></div>
+      <div class="theme-dot"        data-theme="solarized"  style="background:linear-gradient(135deg,#001e26,#268bd2)" title="Solarized"><span class="dot-label">Solarized</span></div>
+      <div class="theme-dot"        data-theme="ayu"        style="background:linear-gradient(135deg,#0d1017,#39bae6)" title="Ayu"><span class="dot-label">Ayu</span></div>
+      <div class="theme-dot"        data-theme="cyberpunk"  style="background:linear-gradient(135deg,#05050f,#00ccff)" title="Cyberpunk"><span class="dot-label">Cyber</span></div>
+    </div>
+
+    <div class="tb-sep"></div>
+
+    <span class="tb-label">Accent</span>
+    <div class="row-group" id="accent-btns">
+      <div class="accent-dot active" data-color="#3b82f6" style="background:#3b82f6" title="Blue"></div>
+      <div class="accent-dot" data-color="#2ee37e"  style="background:#2ee37e"  title="Green"></div>
+      <div class="accent-dot" data-color="#a855f7"  style="background:#a855f7"  title="Purple"></div>
+      <div class="accent-dot" data-color="#f59e0b"  style="background:#f59e0b"  title="Amber"></div>
+      <div class="accent-dot" data-color="#ef4444"  style="background:#ef4444"  title="Red"></div>
+      <div class="accent-dot" data-color="#06b6d4"  style="background:#06b6d4"  title="Cyan"></div>
+      <div class="accent-dot" data-color="#ec4899"  style="background:#ec4899"  title="Pink"></div>
+    </div>
+
+    <div class="tb-sep"></div>
+
+    <span class="tb-label">Cols</span>
+    <div class="row-group" id="col-btns">
+      <button class="tb-btn" data-cols="1">1</button>
+      <button class="tb-btn" data-cols="2">2</button>
+      <button class="tb-btn" data-cols="3">3</button>
+      <button class="tb-btn active" data-cols="4">4</button>
+      <button class="tb-btn" data-cols="auto">Auto</button>
+    </div>
+
+    <div class="tb-sep"></div>
+
+    <span class="tb-label">View</span>
+    <div class="row-group">
+      <button class="tb-btn-icon active" id="view-grid" title="Grid view">
+        <svg viewBox="0 0 16 16"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+      </button>
+      <button class="tb-btn-icon" id="view-list" title="List view">
+        <svg viewBox="0 0 16 16"><rect x="1" y="2" width="14" height="3" rx="1"/><rect x="1" y="7" width="14" height="3" rx="1"/><rect x="1" y="12" width="14" height="3" rx="1"/></svg>
+      </button>
+    </div>
+
+    <div class="tb-sep"></div>
+
+    <span class="tb-label">Size</span>
+    <div class="row-group">
+      <button class="tb-btn" data-size="compact">S</button>
+      <button class="tb-btn active" data-size="default">M</button>
+      <button class="tb-btn" data-size="large">L</button>
+    </div>
+
+    <div class="tb-sep"></div>
+
+    <span class="tb-label">Sort</span>
+    <select class="tb-select" id="sort-select">
+      <option value="default">Default</option>
+      <option value="name">Name A→Z</option>
+      <option value="name-desc">Name Z→A</option>
+      <option value="status-down">Down first</option>
+      <option value="status-up">Up first</option>
+      <option value="latency">Latency ↑</option>
+    </select>
+
+    <div class="tb-sep"></div>
+
+    <span class="tb-label">Filter</span>
+    <select class="tb-select" id="filter-select">
+      <option value="all">All</option>
+      <option value="down">Down only</option>
+      <option value="up">Up only</option>
+      <option value="pending">Pending</option>
+    </select>
+
+    <div class="tb-sep"></div>
+
+    <label class="toggle-wrap" id="refresh-toggle">
+      <div class="toggle on" id="refresh-toggle-el"></div>
+      <span class="toggle-label">Auto-refresh</span>
+    </label>
+
+  </div>
+</div>
+
+<div class="hero unknown" id="hero">
+  <div class="hero-icon" id="hero-icon">…</div>
+  <div>
+    <div class="hero-title" id="hero-title">Loading…</div>
+    <div class="hero-sub" id="hero-sub">Connecting to monitor service</div>
+  </div>
+</div>
+
+<div class="content" id="content">
+  <div class="empty"><div class="empty-icon">◌</div>Loading monitors…</div>
+</div>
+
+<div class="footer">
+  Last updated <span id="updated">—</span> · <span id="refresh-status">Auto-refreshing live</span>
+</div>
+
+<script>
+let state = { groups: [], monitors: [] };
+let currentSort = 'default', currentFilter = 'all';
+let isListView = false, autoRefresh = true;
+let currentTheme = 'dark', currentCols = '4';
+
+/* ── Clock ── */
+function tickClock(){
+  const n = new Date();
+  document.getElementById('time').textContent = n.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  document.getElementById('date').textContent = n.toLocaleDateString([],{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+}
+setInterval(tickClock,1000); tickClock();
+
+/* ── Settings toggle ── */
+document.getElementById('settings-btn').addEventListener('click',()=>{
+  const open = document.getElementById('settings-panel').classList.toggle('open');
+  document.getElementById('settings-btn').classList.toggle('active',open);
+});
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') { document.getElementById('settings-panel').classList.remove('open'); document.getElementById('settings-btn').classList.remove('active'); }});
+
+/* ── Theme ── */
+function setTheme(t){
+  currentTheme = t;
+  document.documentElement.setAttribute('data-theme', t==='dark'?'':t);
+  document.querySelectorAll('.theme-dot').forEach(d=>d.classList.toggle('active',d.dataset.theme===t));
+  savePrefs();
+}
+document.querySelectorAll('.theme-dot').forEach(d=>d.addEventListener('click',()=>setTheme(d.dataset.theme)));
+
+/* ── Accent ── */
+function setAccent(color){
+  document.documentElement.style.setProperty('--accent',color);
+  document.documentElement.style.setProperty('--accent-dim',color+'28');
+  document.querySelectorAll('.accent-dot').forEach(d=>d.classList.toggle('active',d.dataset.color===color));
+  savePrefs();
+}
+document.querySelectorAll('.accent-dot').forEach(d=>d.addEventListener('click',()=>setAccent(d.dataset.color)));
+
+/* ── Columns ── */
+function setCols(val){
+  currentCols = String(val);
+  document.querySelectorAll('.grid:not(.list-view)').forEach(g=>{
+    if(val==='auto'){g.classList.add('auto-cols');g.style.removeProperty('--cols');}
+    else{g.classList.remove('auto-cols');g.style.setProperty('--cols',val);}
+  });
+  document.querySelectorAll('[data-cols]').forEach(b=>b.classList.toggle('active',b.dataset.cols===currentCols));
+  savePrefs();
+}
+document.querySelectorAll('[data-cols]').forEach(b=>b.addEventListener('click',()=>setCols(b.dataset.cols)));
+
+/* ── View ── */
+document.getElementById('view-grid').addEventListener('click',()=>{
+  isListView=false;
+  document.getElementById('view-grid').classList.add('active');
+  document.getElementById('view-list').classList.remove('active');
+  document.querySelectorAll('.grid').forEach(g=>g.classList.remove('list-view'));
+  savePrefs();
+});
+document.getElementById('view-list').addEventListener('click',()=>{
+  isListView=true;
+  document.getElementById('view-list').classList.add('active');
+  document.getElementById('view-grid').classList.remove('active');
+  document.querySelectorAll('.grid').forEach(g=>g.classList.add('list-view'));
+  savePrefs();
+});
+
+/* ── Size ── */
+document.querySelectorAll('[data-size]').forEach(b=>b.addEventListener('click',()=>{
+  document.body.classList.remove('compact','default','large');
+  document.body.classList.add(b.dataset.size);
+  document.querySelectorAll('[data-size]').forEach(x=>x.classList.toggle('active',x.dataset.size===b.dataset.size));
+  savePrefs();
+}));
+
+/* ── Sort / Filter ── */
+document.getElementById('sort-select').addEventListener('change',e=>{currentSort=e.target.value;render();savePrefs();});
+document.getElementById('filter-select').addEventListener('change',e=>{currentFilter=e.target.value;render();savePrefs();});
+
+/* ── Auto-refresh ── */
+document.getElementById('refresh-toggle').addEventListener('click',()=>{
+  autoRefresh=!autoRefresh;
+  document.getElementById('refresh-toggle-el').classList.toggle('on',autoRefresh);
+  document.getElementById('refresh-status').textContent=autoRefresh?'Auto-refreshing live':'Auto-refresh paused';
+  savePrefs();
+});
+
+/* ── Prefs ── */
+function savePrefs(){
+  try{
+    localStorage.setItem('upmon_status_prefs',JSON.stringify({
+      theme:currentTheme, cols:currentCols, listView:isListView,
+      sort:currentSort, filter:currentFilter,
+      accent:document.querySelector('.accent-dot.active')?.dataset.color||'#3b82f6',
+      size:document.querySelector('[data-size].active')?.dataset.size||'default',
+      autoRefresh
+    }));
+  }catch(e){}
+}
+function loadPrefs(){
+  try{
+    const p=JSON.parse(localStorage.getItem('upmon_status_prefs')||'{}');
+    if(p.theme) setTheme(p.theme);
+    if(p.accent) setAccent(p.accent);
+    if(p.cols) setCols(p.cols);
+    if(p.size){
+      document.body.classList.remove('compact','default','large');
+      document.body.classList.add(p.size);
+      document.querySelectorAll('[data-size]').forEach(b=>b.classList.toggle('active',b.dataset.size===p.size));
+    }
+    if(p.listView) document.getElementById('view-list').click();
+    if(p.sort){currentSort=p.sort;document.getElementById('sort-select').value=p.sort;}
+    if(p.filter){currentFilter=p.filter;document.getElementById('filter-select').value=p.filter;}
+    if(p.autoRefresh===false) document.getElementById('refresh-toggle').click();
+  }catch(e){}
+}
+loadPrefs();
+
+/* ── Helpers ── */
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function timeAgo(ts){const s=Math.floor((Date.now()-ts)/1000);if(s<10)return'now';if(s<60)return s+'s ago';const m=Math.floor(s/60);if(m<60)return m+'m ago';const h=Math.floor(m/60);if(h<24)return h+'h ago';return Math.floor(h/24)+'d ago';}
+function statusLabel(s){return s==='up'?'Operational':s==='down'?'Down':'Pending';}
+function sortMonitors(list){
+  const arr=[...list];
+  switch(currentSort){
+    case 'name':        return arr.sort((a,b)=>a.name.localeCompare(b.name));
+    case 'name-desc':   return arr.sort((a,b)=>b.name.localeCompare(a.name));
+    case 'status-down': return arr.sort((a,b)=>(a.status==='down'?0:1)-(b.status==='down'?0:1));
+    case 'status-up':   return arr.sort((a,b)=>(a.status==='up'?0:1)-(b.status==='up'?0:1));
+    case 'latency':     return arr.sort((a,b)=>(a.last_latency||Infinity)-(b.last_latency||Infinity));
+    default: return arr;
+  }
+}
+function filterMonitors(list){return currentFilter==='all'?list:list.filter(m=>m.status===currentFilter);}
+
+/* ── Card HTML ── */
+function cardHtml(m){
+  const st = m.status || 'pending';
+  const lat = m.last_latency != null ? m.last_latency+'ms' : '—';
+  const lastSeen = m.last_checked_at ? timeAgo(m.last_checked_at) : 'never';
+
+  // Status bar: driven by CURRENT STATUS, not just uptime
+  // Down → full red shimmer animation (CSS handles it)
+  // Up   → fill width = uptime24h percentage
+  // Pending → amber pulse (CSS handles it)
+  const uptime24 = m.uptime24h != null ? Math.min(m.uptime24h, 100) : null;
+  const barWidth = st === 'up' ? (uptime24 != null ? uptime24 : 100) : 100;
+  const uptimeLabel = uptime24 != null ? uptime24.toFixed(1)+'%' : '—';
+
+  return `
+  <div class="card ${st}">
+    <div class="card-head">
+      <div>
+        <div class="card-name">${esc(m.name)}</div>
+        <div class="card-type">${esc(m.type)}</div>
+      </div>
+      <div class="pill ${st}"><span class="pill-dot"></span>${statusLabel(st)}</div>
+    </div>
+    <div class="card-foot">
+      <span>${lat}</span>
+      <span>${lastSeen}</span>
+    </div>
+    <div class="status-bar-wrap">
+      <div class="status-bar ${st}" style="width:${barWidth}%"></div>
+    </div>
+  </div>`;
+}
+
+/* ── Render ── */
+function render(){
+  const monitors = state.monitors || [];
+  const up = monitors.filter(m=>m.status==='up').length;
+  const down = monitors.filter(m=>m.status==='down').length;
+  const total = monitors.length;
+
+  document.getElementById('svc-count').textContent=`${total} monitor${total!==1?'s':''}`;
+
+  const hero=document.getElementById('hero');
+  if(!total){hero.className='hero unknown';document.getElementById('hero-icon').textContent='○';document.getElementById('hero-title').textContent='No monitors configured';document.getElementById('hero-sub').textContent='Add monitors from the admin dashboard';}
+  else if(!down){hero.className='hero up';document.getElementById('hero-icon').textContent='✓';document.getElementById('hero-title').textContent='All Systems Operational';document.getElementById('hero-sub').textContent=`${total} of ${total} services running normally`;}
+  else{hero.className='hero down';document.getElementById('hero-icon').textContent='!';document.getElementById('hero-title').textContent=`${down} Service${down!==1?'s':''} Down`;document.getElementById('hero-sub').textContent=`${up} operational · ${down} down · ${total} total`;}
+
+  if(!total){document.getElementById('content').innerHTML=`<div class="empty"><div class="empty-icon">◌</div>No monitors yet.</div>`;return;}
+
+  const byGroup=new Map(); const ungrouped=[];
+  monitors.forEach(m=>{
+    if(m.group_id){if(!byGroup.has(m.group_id))byGroup.set(m.group_id,[]);byGroup.get(m.group_id).push(m);}
+    else ungrouped.push(m);
+  });
+
+  let html='';
+  const renderGroup=(title,list)=>{
+    const sorted=sortMonitors(filterMonitors(list));
+    if(!sorted.length)return;
+    html+=`<div class="group-title">${esc(title)}</div><div class="grid${isListView?' list-view':''}">`;
+    sorted.forEach(m=>{html+=cardHtml(m);});
+    html+=`</div>`;
+  };
+
+  (state.groups||[]).forEach(g=>{const list=byGroup.get(g.id);if(list&&list.length)renderGroup(g.name,list);});
+  if(ungrouped.length)renderGroup((state.groups||[]).length?'Other':'Services',ungrouped);
+
+  document.getElementById('content').innerHTML=html;
+
+  // Re-apply layout settings after DOM update
+  const colVal=currentCols;
+  document.querySelectorAll('.grid:not(.list-view)').forEach(g=>{
+    if(colVal==='auto'){g.classList.add('auto-cols');}
+    else{g.classList.remove('auto-cols');g.style.setProperty('--cols',colVal);}
+  });
+  if(isListView) document.querySelectorAll('.grid').forEach(g=>g.classList.add('list-view'));
+}
+
+/* ── WebSocket ── */
+let ws;
+function connectWs(){
+  const proto=location.protocol==='https:'?'wss:':'ws:';
+  ws=new WebSocket(`${proto}//${location.host}/ws`);
+  ws.onmessage=ev=>{
+    const msg=JSON.parse(ev.data);
+    if(msg.type==='check'){
+      const m=(state.monitors||[]).find(x=>x.id===msg.monitorId);
+      if(m){m.status=msg.status;m.last_latency=msg.latency;m.last_checked_at=msg.ts;render();return;}
+    }
+    if(['monitor_added','monitor_updated','monitor_removed'].includes(msg.type)) loadStatus();
+  };
+  ws.onclose=()=>setTimeout(connectWs,3000);
+  ws.onerror=()=>ws.close();
+}
+
+async function loadStatus(){
+  try{
+    const r=await fetch('/api/public/status');
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    state=await r.json();
+    render();
+    document.getElementById('updated').textContent=new Date().toLocaleTimeString();
+  }catch(e){
+    document.getElementById('hero-sub').textContent='Unable to reach monitor service';
+  }
+}
+
+connectWs();
+loadStatus();
+setInterval(()=>{if(autoRefresh)loadStatus();},30000);
+</script>
+</body>
+</html>

@@ -1,0 +1,963 @@
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UpMon Admin</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+  /* ── Themes ── */
+  :root{
+    --bg:#0a0c10;--panel:#12151c;--panel2:#181c26;--panel3:#1f2430;
+    --line:#232838;--line2:#2c3344;
+    --text:#e8ecf4;--muted:#5b6478;--dim:#838ea3;
+    --up:#2ee37e;--up-dim:#0e3322;--down:#ff4d5e;--down-dim:#3a1018;
+    --pending:#f5b942;--pending-dim:#3a2c0a;
+    --blue:#4d8dff;--blue-dim:#102447;
+    --font:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    --mono:'JetBrains Mono','SF Mono',Consolas,monospace;
+  }
+  [data-theme="light"]{
+    --bg:#f0f2f7;--panel:#ffffff;--panel2:#f5f7fb;--panel3:#eaedf4;
+    --line:#dde1ec;--line2:#c8cdd9;
+    --text:#1a1d26;--muted:#8890a4;--dim:#5a6177;
+  }
+  [data-theme="nord"]{
+    --bg:#2e3440;--panel:#3b4252;--panel2:#434c5e;--panel3:#4c566a;
+    --line:#434c5e;--line2:#4c566a;
+    --text:#eceff4;--muted:#7b88a1;--dim:#aab0bf;
+    --up:#a3be8c;--up-dim:#2a3624;--down:#bf616a;--down-dim:#3a1e20;
+    --pending:#ebcb8b;--pending-dim:#3a3020;--blue:#81a1c1;--blue-dim:#243040;
+  }
+  [data-theme="catppuccin"]{
+    --bg:#1e1e2e;--panel:#181825;--panel2:#1e1e2e;--panel3:#313244;
+    --line:#313244;--line2:#45475a;
+    --text:#cdd6f4;--muted:#6c7086;--dim:#a6adc8;
+    --up:#a6e3a1;--up-dim:#1e2d1e;--down:#f38ba8;--down-dim:#2d1e22;
+    --pending:#f9e2af;--pending-dim:#2d2a1e;--blue:#89b4fa;--blue-dim:#1e2340;
+  }
+  [data-theme="gruvbox"]{
+    --bg:#282828;--panel:#3c3836;--panel2:#504945;--panel3:#665c54;
+    --line:#504945;--line2:#665c54;
+    --text:#ebdbb2;--muted:#928374;--dim:#bdae93;
+    --up:#b8bb26;--up-dim:#232700;--down:#fb4934;--down-dim:#3d0a04;
+    --pending:#fabd2f;--pending-dim:#3a2c00;--blue:#83a598;--blue-dim:#1a2e2a;
+  }
+
+  body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;min-height:100vh;}
+  ::selection{background:var(--blue);color:#fff}
+
+  /* Login */
+  #login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+  .login-box{width:100%;max-width:340px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:32px;text-align:center}
+  .login-mark{width:48px;height:48px;border-radius:12px;margin:0 auto 18px;background:linear-gradient(135deg,var(--up),#1aa860);display:flex;align-items:center;justify-content:center;font-weight:800;color:#06140d;font-size:18px}
+  .login-box h1{font-size:18px;margin-bottom:4px}
+  .login-box p{color:var(--muted);font-size:13px;margin-bottom:22px}
+  .login-box input{width:100%;padding:11px 14px;background:var(--panel2);border:1px solid var(--line2);border-radius:8px;color:var(--text);font-size:14px;margin-bottom:12px;font-family:var(--font)}
+  .login-box input:focus{outline:none;border-color:var(--blue)}
+  .login-box button{width:100%;padding:11px;background:var(--blue);border:none;border-radius:8px;color:#fff;font-weight:600;font-size:14px;cursor:pointer;transition:opacity .15s}
+  .login-box button:hover{opacity:.88}
+  .login-err{color:var(--down);font-size:12px;margin-top:10px;min-height:16px}
+
+  /* App shell */
+  #app{display:none;min-height:100vh}
+  .layout{display:grid;grid-template-columns:240px 1fr;min-height:100vh}
+  .sidebar{background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
+  .sb-head{padding:18px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+  .sb-mark{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--up),#1aa860);display:flex;align-items:center;justify-content:center;font-weight:800;color:#06140d;font-size:13px;flex-shrink:0}
+  .sb-title{font-size:13px;font-weight:700}
+  .sb-sub{font-size:10px;color:var(--muted);font-family:var(--mono)}
+
+  .sb-stats{padding:14px 16px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;border-bottom:1px solid var(--line)}
+  .stat{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px 6px;text-align:center}
+  .stat .n{font-family:var(--mono);font-size:18px;font-weight:700}
+  .stat .l{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-top:2px}
+  .n-up{color:var(--up)}.n-down{color:var(--down)}.n-tot{color:var(--dim)}
+
+  .sb-nav{flex:1;overflow-y:auto;padding:10px}
+  .nav-item{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:6px;cursor:pointer;font-size:12px}
+  .nav-item:hover{background:var(--panel2)}
+  .ndot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+  .ndot.up{background:var(--up)}.ndot.down{background:var(--down)}.ndot.pending{background:var(--pending)}
+  .nav-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+  .sb-foot{padding:12px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px 14px;border-radius:8px;border:1px solid var(--line2);background:var(--panel2);color:var(--text);font-size:13px;cursor:pointer;font-family:var(--font);transition:all .12s}
+  .btn:hover{border-color:var(--dim)}
+  .btn-primary{background:var(--blue);border-color:var(--blue);color:#fff}
+  .btn-primary:hover{opacity:.88}
+  .btn-danger{color:var(--down);border-color:#5c1f28;background:transparent}
+  .btn-danger:hover{background:var(--down-dim)}
+  .btn-ghost{background:transparent;border-color:var(--line);color:var(--dim)}
+  .btn-sm{padding:6px 10px;font-size:12px}
+  .btn-block{width:100%}
+  a.btn{text-decoration:none}
+  .btn-icon{padding:7px;border-radius:7px;font-size:15px;line-height:1}
+
+  .main{padding:26px 30px;overflow-y:auto}
+  .mhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;flex-wrap:wrap;gap:12px}
+  .mhead h1{font-size:19px;font-weight:700}
+  .mhead .sub{font-size:12px;color:var(--muted);font-family:var(--mono);margin-top:3px}
+  .hactions{display:flex;gap:8px}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;transition:border-color .15s}
+  .card:hover{border-color:var(--line2)}
+  .card.up{border-left:3px solid var(--up)}.card.down{border-left:3px solid var(--down)}.card.pending{border-left:3px solid var(--pending)}.card.paused{opacity:.55}
+  .chead{padding:14px 16px 10px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+  .cname{font-size:14px;font-weight:600}
+  .cmeta{font-size:11px;color:var(--muted);font-family:var(--mono);margin-top:3px}
+  .pill{font-size:10px;font-weight:700;padding:3px 9px;border-radius:14px;font-family:var(--mono);white-space:nowrap}
+  .pill.up{background:var(--up-dim);color:var(--up)}.pill.down{background:var(--down-dim);color:var(--down)}.pill.pending{background:var(--pending-dim);color:var(--pending)}
+  .cbody{padding:0 16px 12px;font-size:12px;color:var(--dim)}
+  .detail{font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:8px}
+  .row{display:flex;justify-content:space-between;padding:3px 0}
+  .cfoot{padding:10px 16px;border-top:1px solid var(--line);display:flex;gap:6px;flex-wrap:wrap}
+
+  /* history bar */
+  .hist-bar{display:flex;gap:2px;margin-bottom:10px;height:22px;align-items:flex-end}
+  .hist-seg{flex:1;border-radius:2px;min-height:4px;cursor:default}
+  .hist-seg.ok{background:var(--up);opacity:.7}.hist-seg.fail{background:var(--down);opacity:.9}.hist-seg.empty{background:var(--line2)}
+
+  .empty{text-align:center;padding:60px 20px;color:var(--muted)}
+
+  .tabs{display:flex;gap:4px;padding:10px 16px 0;border-bottom:1px solid var(--line)}
+  .tab{flex:1;padding:9px 4px;text-align:center;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+  .tab:hover{color:var(--dim)}
+  .tab.active{color:var(--text);border-bottom-color:var(--blue)}
+
+  /* agent cards */
+  .pill.online{background:var(--up-dim);color:var(--up)}.pill.offline{background:var(--down-dim);color:var(--down)}.pill.stale{background:var(--pending-dim);color:var(--pending)}.pill.checking{background:var(--panel3);color:var(--muted)}
+  .card.online{border-left:3px solid var(--up)}.card.offline{border-left:3px solid var(--down)}.card.stale{border-left:3px solid var(--pending)}.card.checking{border-left:3px solid var(--line2)}
+  .agent-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px}
+  .mini-stat{background:var(--panel2);border-radius:7px;padding:7px 8px}
+  .mini-stat .ms-label{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+  .mini-stat .ms-val{font-family:var(--mono);font-size:13px;font-weight:700}
+  .mini-bar{height:3px;border-radius:2px;background:var(--line2);margin-top:5px;overflow:hidden}
+  .mini-bar-fill{height:100%;border-radius:2px;background:var(--blue)}
+  .mini-bar-fill.warn{background:var(--pending)}.mini-bar-fill.crit{background:var(--down)}
+
+  /* install modal */
+  .code-block{background:var(--panel2);border:1px solid var(--line2);border-radius:8px;padding:12px 14px;font-family:var(--mono);font-size:12px;color:var(--text);word-break:break-all;position:relative}
+  .copy-btn{position:absolute;top:8px;right:8px;padding:4px 8px;font-size:11px;border-radius:5px;border:1px solid var(--line2);background:var(--panel3);color:var(--dim);cursor:pointer}
+  .copy-btn:hover{color:var(--text)}
+  .install-steps{display:flex;flex-direction:column;gap:12px}
+  .step-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+
+  /* theme switcher */
+  .theme-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+  .theme-dot{width:20px;height:20px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:border-color .15s}
+  .theme-dot:hover,.theme-dot.active{border-color:var(--text)}
+
+  /* modal */
+  .overlay{position:fixed;inset:0;background:rgba(5,6,10,.7);display:none;align-items:center;justify-content:center;z-index:50;padding:20px;backdrop-filter:blur(2px)}
+  .overlay.show{display:flex}
+  .modal{background:var(--panel);border:1px solid var(--line2);border-radius:14px;width:100%;max-width:480px;max-height:88vh;overflow-y:auto}
+  .modal-head{padding:18px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+  .modal-head h2{font-size:15px}
+  .modal-close{background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;line-height:1}
+  .modal-body{padding:18px 20px}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:11px;color:var(--dim);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em}
+  .field input,.field select{width:100%;padding:9px 11px;background:var(--panel2);border:1px solid var(--line2);border-radius:7px;color:var(--text);font-size:13px;font-family:var(--font)}
+  .field input:focus,.field select:focus{outline:none;border-color:var(--blue)}
+  .field-row{display:grid;grid-template-columns:2fr 1fr;gap:10px}
+  .field-row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .checkbox-row{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+  .checkbox-row input{width:auto}
+  .checkbox-row label{margin:0;text-transform:none;font-size:13px;color:var(--text)}
+  .modal-foot{padding:14px 20px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end}
+  .hint{font-size:11px;color:var(--muted);margin-top:-8px;margin-bottom:14px}
+  .err-msg{color:var(--down);font-size:12px;margin-bottom:10px}
+  .token-hint{font-size:11px;color:var(--muted);margin-top:-8px;margin-bottom:14px}
+
+  /* settings */
+  .settings-section{margin-bottom:22px}
+  .settings-section h3{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:12px;padding-bottom:7px;border-bottom:1px solid var(--line)}
+  .tg-test-row{display:flex;gap:8px;align-items:center;margin-top:8px}
+  .tg-status{font-size:12px;margin-top:8px;min-height:16px}
+  .tg-status.ok{color:var(--up)}.tg-status.err{color:var(--down)}
+  .install-field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+  .install-field-row .field{margin-bottom:0}
+  .install-tab{flex:1;padding:9px 12px;font-size:12px;background:var(--panel2);border:none;color:var(--dim);cursor:pointer;transition:background .15s,color .15s}
+  .install-tab:hover{color:var(--text)}
+  .install-tab-active{background:var(--panel3);color:var(--text);font-weight:600}
+  .arch-btn{padding:6px 12px;font-size:12px;border:1px solid var(--line2);border-radius:6px;background:var(--panel2);color:var(--dim);cursor:pointer;transition:all .15s}
+  .arch-btn:hover{color:var(--text)}
+  .arch-btn-active{border-color:var(--blue);color:var(--blue);background:var(--panel3)}
+
+  .toast-wrap{position:fixed;bottom:20px;right:20px;z-index:100;display:flex;flex-direction:column;gap:8px}
+  .toast{background:var(--panel3);border:1px solid var(--line2);padding:10px 16px;border-radius:8px;font-size:13px;animation:slideIn .2s ease}
+  @keyframes slideIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+  @media(max-width:760px){.layout{grid-template-columns:1fr}.sidebar{position:relative;height:auto}}
+</style>
+</head>
+<body>
+
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-mark">UP</div>
+    <h1>UpMon Admin</h1>
+    <p>Sign in to manage monitors</p>
+    <input type="password" id="login-pass" placeholder="Admin password" autofocus>
+    <button onclick="doLogin()">Sign in</button>
+    <div class="login-err" id="login-err"></div>
+  </div>
+</div>
+
+<div id="app">
+  <div class="layout">
+    <div class="sidebar">
+      <div class="sb-head">
+        <div class="sb-mark">UP</div>
+        <div>
+          <div class="sb-title">UpMon</div>
+          <div class="sb-sub">admin</div>
+        </div>
+      </div>
+      <div class="tabs">
+        <div class="tab active" id="tab-monitors" onclick="switchPage('monitors')">Monitors</div>
+        <div class="tab" id="tab-agents" onclick="switchPage('agents')">Agents</div>
+      </div>
+      <div class="sb-stats">
+        <div class="stat"><div class="n n-up" id="s-up">0</div><div class="l" id="s-up-label">Up</div></div>
+        <div class="stat"><div class="n n-down" id="s-down">0</div><div class="l" id="s-down-label">Down</div></div>
+        <div class="stat"><div class="n n-tot" id="s-tot">0</div><div class="l">Total</div></div>
+      </div>
+      <div class="sb-nav" id="nav-list"></div>
+      <div class="sb-foot">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:11px;color:var(--muted)">Theme</span>
+          <div class="theme-row">
+            <div class="theme-dot active" data-theme="dark"    style="background:#0a0c10;border-color:var(--dim)" title="Dark"       onclick="setTheme('dark')"></div>
+            <div class="theme-dot"        data-theme="light"   style="background:#f0f2f7" title="Light"      onclick="setTheme('light')"></div>
+            <div class="theme-dot"        data-theme="nord"    style="background:#2e3440" title="Nord"       onclick="setTheme('nord')"></div>
+            <div class="theme-dot"        data-theme="catppuccin" style="background:#1e1e2e" title="Catppuccin" onclick="setTheme('catppuccin')"></div>
+            <div class="theme-dot"        data-theme="gruvbox" style="background:#282828" title="Gruvbox"    onclick="setTheme('gruvbox')"></div>
+          </div>
+        </div>
+        <a class="btn btn-ghost btn-block" href="/" target="_blank">View public status →</a>
+        <button class="btn btn-ghost btn-block btn-sm" onclick="openSettings()">⚙ Settings</button>
+        <button class="btn btn-primary btn-block" id="btn-add-sidebar" onclick="openCreateCurrent()">+ Add monitor</button>
+        <button class="btn btn-ghost btn-block btn-sm" onclick="logout()">Sign out</button>
+      </div>
+    </div>
+
+    <div class="main">
+      <div id="page-monitors">
+        <div class="mhead">
+          <div>
+            <h1>Monitors</h1>
+            <div class="sub" id="page-sub">0 monitors</div>
+          </div>
+          <div class="hactions">
+            <button class="btn" onclick="checkAll()">↻ Check all</button>
+            <button class="btn btn-primary" onclick="openCreate()">+ Add monitor</button>
+          </div>
+        </div>
+        <div class="grid" id="grid"></div>
+      </div>
+
+      <div id="page-agents" style="display:none">
+        <div class="mhead">
+          <div>
+            <h1>Agents</h1>
+            <div class="sub" id="agent-page-sub">0 agents</div>
+          </div>
+          <div class="hactions">
+            <button class="btn" onclick="refreshAllHosts()">↻ Refresh all</button>
+            <button class="btn" onclick="openInstallModal()">⬇ Install agent</button>
+            <button class="btn btn-primary" onclick="openCreateHost()">+ Add agent</button>
+          </div>
+        </div>
+        <div class="grid" id="agent-grid"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Monitor modal -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="modal-title">Add monitor</h2>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="err-msg" id="form-err"></div>
+      <div class="field">
+        <label>Name</label>
+        <input id="f-name" placeholder="e.g. Evolute Call Server">
+      </div>
+      <div class="field-row2">
+        <div class="field">
+          <label>Type</label>
+          <select id="f-type" onchange="onTypeChange()">
+            <option value="http">HTTP</option>
+            <option value="tcp">TCP port</option>
+            <option value="ping">Ping</option>
+            <option value="postgres">Postgres</option>
+            <option value="mysql">MySQL / MariaDB</option>
+            <option value="redis">Redis</option>
+            <option value="disk">Disk usage</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Interval</label>
+          <select id="f-interval">
+            <option value="10">10s</option>
+            <option value="30">30s</option>
+            <option value="60" selected>1m</option>
+            <option value="300">5m</option>
+            <option value="600">10m</option>
+            <option value="1800">30m</option>
+          </select>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Host / IP</label><input id="f-ip" placeholder="192.168.1.10 or localhost"></div>
+        <div class="field"><label>Port</label><input id="f-port" placeholder="auto" type="number"></div>
+      </div>
+      <div class="field" id="f-path-wrap" style="display:none"><label>Path</label><input id="f-path" placeholder="/"></div>
+      <div class="field-row2" id="f-cred-wrap" style="display:none">
+        <div class="field"><label>User</label><input id="f-user" placeholder="postgres"></div>
+        <div class="field"><label>Password</label><input id="f-pass" type="password" placeholder="optional"></div>
+      </div>
+      <div class="field" id="f-db-wrap" style="display:none"><label>Database</label><input id="f-db" placeholder="postgres"></div>
+      <div class="field" id="f-threshold-wrap" style="display:none"><label>Alert threshold (%)</label><input id="f-threshold" type="number" value="90"></div>
+      <div class="checkbox-row"><input type="checkbox" id="f-public" checked><label for="f-public">Show on public status page</label></div>
+      <div class="checkbox-row"><input type="checkbox" id="f-paused"><label for="f-paused">Paused (don't run checks)</label></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-danger" id="btn-delete" style="display:none" onclick="deleteCurrent()">Delete</button>
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveMonitor()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Agent modal -->
+<div class="overlay" id="host-overlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="host-modal-title">Add agent</h2>
+      <button class="modal-close" onclick="closeHostModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="err-msg" id="host-form-err"></div>
+      <div class="field"><label>Name</label><input id="h-name" placeholder="e.g. prod-web-01"></div>
+      <div class="field"><label>Agent URL</label><input id="h-url" placeholder="http://192.168.1.10:4242"></div>
+      <div class="field">
+        <label>Agent token</label>
+        <input id="h-token" type="password" placeholder="optional">
+      </div>
+      <div class="token-hint" id="h-token-hint" style="display:none">Leave blank to keep the current token.</div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-danger" id="btn-delete-host" style="display:none" onclick="deleteCurrentHost()">Delete</button>
+      <button class="btn btn-ghost" onclick="closeHostModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveHost()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Install agent modal -->
+<div class="overlay" id="install-overlay">
+  <div class="modal" style="max-width:580px">
+    <div class="modal-head">
+      <h2>Install Agent</h2>
+      <button class="modal-close" onclick="closeInstallModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="install-field-row" style="margin-bottom:4px">
+        <div class="field">
+          <label>Server name</label>
+          <input id="install-name" placeholder="e.g. prod-web-01" oninput="regenerateInstallCmd()">
+        </div>
+        <div class="field">
+          <label>Agent token</label>
+          <input id="install-token" placeholder="secret token" oninput="regenerateInstallCmd()">
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:14px">Token is saved locally and reused next time.</div>
+
+      <!-- Mode tabs -->
+      <div style="display:flex;gap:0;border:1px solid var(--line2);border-radius:8px;overflow:hidden;margin-bottom:16px">
+        <button id="itab-script" class="install-tab install-tab-active" onclick="switchInstallTab('script')">
+          📜 Script <span style="font-size:10px;opacity:.7">(Node.js auto-installed)</span>
+        </button>
+        <button id="itab-binary" class="install-tab" onclick="switchInstallTab('binary')">
+          ⚡ Binary <span style="font-size:10px;opacity:.7">(no Node.js needed)</span>
+        </button>
+      </div>
+
+      <!-- Script mode -->
+      <div id="install-mode-script" class="install-steps">
+        <div>
+          <div class="step-label">1 · One-liner — installs Node.js if missing, runs agent, auto-registers</div>
+          <div class="code-block" id="install-cmd-script">
+            <button class="copy-btn" onclick="copyCode('install-cmd-script')">Copy</button>
+            <span id="install-cmd-script-text" style="white-space:pre-wrap"></span>
+          </div>
+        </div>
+        <div>
+          <div class="step-label">2 · Or: persist as systemd service manually</div>
+          <div class="code-block" id="install-cmd-systemd">
+            <button class="copy-btn" onclick="copyCode('install-cmd-systemd')">Copy</button>
+            <span id="install-cmd-systemd-text" style="white-space:pre-wrap"></span>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--muted)">The agent will appear in the <b>Agents</b> tab automatically after it first connects.</div>
+      </div>
+
+      <!-- Binary mode -->
+      <div id="install-mode-binary" class="install-steps" style="display:none">
+        <div style="font-size:12px;color:var(--dim);padding:10px 12px;background:var(--panel2);border:1px solid var(--line2);border-radius:8px;margin-bottom:4px">
+          ⚡ No Node.js needed on the target server. Requires a pre-compiled binary on this UpMon server.
+          <br><span style="color:var(--muted);font-size:11px">Compile once: <code style="background:var(--panel3);padding:1px 5px;border-radius:3px">npx pkg agent.js --targets node18-linux-x64 --output agent-bin-x64</code></span>
+        </div>
+        <div>
+          <div class="step-label">Architecture</div>
+          <div style="display:flex;gap:8px;margin-bottom:12px">
+            <button id="arch-x64"   class="arch-btn arch-btn-active" onclick="switchArch('x64')">x86_64 (Intel/AMD)</button>
+            <button id="arch-arm64" class="arch-btn"                 onclick="switchArch('arm64')">ARM64 (Raspberry Pi, AWS Graviton)</button>
+          </div>
+        </div>
+        <div>
+          <div class="step-label">1 · One-liner — downloads binary, installs systemd service, auto-registers</div>
+          <div class="code-block" id="install-cmd-binary">
+            <button class="copy-btn" onclick="copyCode('install-cmd-binary')">Copy</button>
+            <span id="install-cmd-binary-text" style="white-space:pre-wrap"></span>
+          </div>
+        </div>
+        <div id="binary-unavail" style="display:none;font-size:12px;color:var(--down);margin-top:4px">
+          ⚠ Binary not found on server. Compile it first (see note above), then place it in the UpMon root directory.
+        </div>
+        <div style="font-size:11px;color:var(--muted)">The agent will appear in the <b>Agents</b> tab automatically after it first connects.</div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeInstallModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Settings modal -->
+<div class="overlay" id="settings-overlay">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-head">
+      <h2>⚙ Settings</h2>
+      <button class="modal-close" onclick="closeSettings()">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <div class="settings-section">
+        <h3>Telegram Notifications</h3>
+        <div class="field">
+          <label>Bot token</label>
+          <input id="tg-token" placeholder="123456:ABC-DEF…" autocomplete="off">
+        </div>
+        <div class="field">
+          <label>Chat ID</label>
+          <input id="tg-chat-id" placeholder="-1001234567890 or your user ID" autocomplete="off">
+        </div>
+        <div class="checkbox-row">
+          <input type="checkbox" id="tg-enabled">
+          <label for="tg-enabled">Enable Telegram alerts</label>
+        </div>
+        <div class="tg-test-row">
+          <button class="btn btn-sm" onclick="testTelegram()">Send test message</button>
+          <span class="tg-status" id="tg-status"></span>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:10px">
+          Alerts fire when a monitor goes <b>DOWN</b> or recovers <b>UP</b>. Create a bot at @BotFather and get your Chat ID from @userinfobot.
+        </div>
+      </div>
+
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeSettings()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSettings()">Save settings</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toasts"></div>
+
+<script>
+let monitors = [], editingId = null;
+let hosts = [], hostMetrics = {}, editingHostId = null;
+let currentPage = 'monitors';
+let ws;
+
+// ── Theme ──────────────────────────────────────────────────────────────────
+function setTheme(t){
+  document.documentElement.setAttribute('data-theme', t === 'dark' ? '' : t);
+  localStorage.setItem('upmon-theme', t);
+  document.querySelectorAll('.theme-dot').forEach(d => d.classList.toggle('active', d.dataset.theme === t));
+}
+(function(){
+  const saved = localStorage.getItem('upmon-theme') || 'dark';
+  setTheme(saved);
+})();
+
+// ── Toast ──────────────────────────────────────────────────────────────────
+function toast(msg){
+  const t = document.createElement('div');
+  t.className = 'toast'; t.textContent = msg;
+  document.getElementById('toasts').appendChild(t);
+  setTimeout(() => t.remove(), 2800);
+}
+
+// ── Auth ───────────────────────────────────────────────────────────────────
+async function checkSession(){
+  const r = await fetch('/api/session');
+  const d = await r.json();
+  if (d.authed) showApp(); else showLogin();
+}
+function showLogin(){ document.getElementById('login-screen').style.display='flex'; document.getElementById('app').style.display='none'; }
+function showApp(){ document.getElementById('login-screen').style.display='none'; document.getElementById('app').style.display='block'; loadMonitors(); loadHosts(); connectWs(); }
+async function doLogin(){
+  const pass = document.getElementById('login-pass').value;
+  const r = await fetch('/api/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({password: pass}) });
+  if (r.ok) { showApp(); } else { document.getElementById('login-err').textContent = 'Wrong password'; }
+}
+document.getElementById('login-pass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+async function logout(){ await fetch('/api/logout', {method:'POST'}); showLogin(); }
+
+// ── Monitors ───────────────────────────────────────────────────────────────
+async function loadMonitors(){
+  const r = await fetch('/api/monitors');
+  if (r.status === 401) { showLogin(); return; }
+  monitors = await r.json();
+  renderAll();
+}
+function renderAll(){ renderNav(); renderGrid(); renderStats(); }
+
+function switchPage(page){
+  currentPage = page;
+  document.getElementById('tab-monitors').classList.toggle('active', page === 'monitors');
+  document.getElementById('tab-agents').classList.toggle('active', page === 'agents');
+  document.getElementById('page-monitors').style.display = page === 'monitors' ? '' : 'none';
+  document.getElementById('page-agents').style.display = page === 'agents' ? '' : 'none';
+  document.getElementById('btn-add-sidebar').textContent = page === 'monitors' ? '+ Add monitor' : '+ Add agent';
+  if (page === 'monitors') { renderStats(); renderNav(); }
+  else { renderHostStats(); renderHostsNav(); refreshHostMetrics(); }
+}
+function openCreateCurrent(){ currentPage === 'monitors' ? openCreate() : openCreateHost(); }
+
+function renderStats(){
+  if (currentPage !== 'monitors') return;
+  const up = monitors.filter(m => m.status === 'up').length;
+  const down = monitors.filter(m => m.status === 'down').length;
+  document.getElementById('s-up').textContent = up;
+  document.getElementById('s-down').textContent = down;
+  document.getElementById('s-tot').textContent = monitors.length;
+  document.getElementById('s-up-label').textContent = 'Up';
+  document.getElementById('s-down-label').textContent = 'Down';
+  document.getElementById('page-sub').textContent = `${monitors.length} monitor${monitors.length!==1?'s':''}`;
+  document.title = monitors.length ? `(${up}↑ ${down}↓) UpMon Admin` : 'UpMon Admin';
+}
+
+function renderNav(){
+  if (currentPage !== 'monitors') return;
+  document.getElementById('nav-list').innerHTML = monitors.map(m => `
+    <div class="nav-item" onclick="openEdit(${m.id})">
+      <div class="ndot ${m.status||'pending'}"></div>
+      <span class="nav-name">${esc(m.name)}</span>
+    </div>`).join('');
+}
+
+function histBar(history){
+  if (!history || !history.length) return '';
+  const last = history.slice(-30);
+  return `<div class="hist-bar">${last.map(h => `<div class="hist-seg ${h.ok?'ok':'fail'}" title="${new Date(h.ts).toLocaleTimeString()}: ${h.ok?'UP':'DOWN'}${h.latency?', '+h.latency+'ms':''}"></div>`).join('')}</div>`;
+}
+
+function renderGrid(){
+  const grid = document.getElementById('grid');
+  if (!monitors.length){ grid.innerHTML = `<div class="empty">No monitors yet. Click "+ Add monitor" to get started.</div>`; return; }
+  grid.innerHTML = monitors.map(m => {
+    const lat = m.last_latency != null ? m.last_latency+'ms' : '—';
+    const uptime = m.uptime30d != null ? m.uptime30d.toFixed(2)+'%' : '—';
+    return `
+    <div class="card ${m.status||'pending'} ${m.paused?'paused':''}">
+      <div class="chead">
+        <div>
+          <div class="cname">${esc(m.name)}</div>
+          <div class="cmeta">${esc(m.ip)}${m.port?':'+m.port:''} · ${m.type.toUpperCase()}${m.paused?' · PAUSED':''}</div>
+        </div>
+        <div class="pill ${m.status||'pending'}">${(m.status||'pending').toUpperCase()}</div>
+      </div>
+      <div class="cbody">
+        ${histBar(m.history)}
+        <div class="detail" title="${esc(m.last_detail||'')}">${esc(m.last_detail||'Waiting for first check…')}</div>
+        <div class="row"><span>Latency</span><span>${lat}</span></div>
+        <div class="row"><span>Uptime 30d</span><span>${uptime}</span></div>
+        <div class="row"><span>Checked</span><span>${m.last_checked_at ? timeAgo(m.last_checked_at) : '—'}</span></div>
+      </div>
+      <div class="cfoot">
+        <button class="btn btn-sm" onclick="checkOne(${m.id})">↻ Check</button>
+        <button class="btn btn-sm" onclick="openEdit(${m.id})">✎ Edit</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function timeAgo(ts){ const s=Math.floor((Date.now()-ts)/1000); if(s<5)return 'just now'; if(s<60)return s+'s ago'; if(s<3600)return Math.floor(s/60)+'m ago'; if(s<86400)return Math.floor(s/3600)+'h ago'; return Math.floor(s/86400)+'d ago'; }
+
+function onTypeChange(){
+  const t = document.getElementById('f-type').value;
+  document.getElementById('f-path-wrap').style.display = t==='http' ? '' : 'none';
+  document.getElementById('f-cred-wrap').style.display = ['postgres','mysql','redis'].includes(t) ? '' : 'none';
+  document.getElementById('f-db-wrap').style.display = ['postgres','mysql'].includes(t) ? '' : 'none';
+  document.getElementById('f-threshold-wrap').style.display = t==='disk' ? '' : 'none';
+}
+
+function openCreate(){
+  editingId = null;
+  document.getElementById('modal-title').textContent = 'Add monitor';
+  document.getElementById('btn-delete').style.display = 'none';
+  document.getElementById('form-err').textContent = '';
+  ['f-name','f-ip','f-port','f-path','f-user','f-pass','f-db'].forEach(id => document.getElementById(id).value='');
+  document.getElementById('f-type').value='http'; document.getElementById('f-interval').value='60';
+  document.getElementById('f-threshold').value='90'; document.getElementById('f-public').checked=true; document.getElementById('f-paused').checked=false;
+  onTypeChange(); document.getElementById('overlay').classList.add('show');
+}
+
+function openEdit(id){
+  const m = monitors.find(x=>x.id===id); if(!m) return;
+  editingId = id;
+  document.getElementById('modal-title').textContent = 'Edit monitor';
+  document.getElementById('btn-delete').style.display = '';
+  document.getElementById('form-err').textContent = '';
+  document.getElementById('f-name').value = m.name;
+  document.getElementById('f-type').value = m.type;
+  document.getElementById('f-ip').value = m.ip;
+  document.getElementById('f-port').value = m.port||'';
+  document.getElementById('f-interval').value = String(m.interval_sec);
+  const c = m.config||{};
+  document.getElementById('f-path').value = c.path||'';
+  document.getElementById('f-user').value = c.user||'';
+  document.getElementById('f-pass').value = c.password||'';
+  document.getElementById('f-db').value = c.database||'';
+  document.getElementById('f-threshold').value = c.threshold||90;
+  document.getElementById('f-public').checked = !!m.public;
+  document.getElementById('f-paused').checked = !!m.paused;
+  onTypeChange(); document.getElementById('overlay').classList.add('show');
+}
+function closeModal(){ document.getElementById('overlay').classList.remove('show'); }
+
+async function saveMonitor(){
+  const name = document.getElementById('f-name').value.trim();
+  const ip = document.getElementById('f-ip').value.trim();
+  const type = document.getElementById('f-type').value;
+  const port = document.getElementById('f-port').value;
+  const interval_sec = Number(document.getElementById('f-interval').value);
+  const errEl = document.getElementById('form-err');
+  if (!name||!ip){ errEl.textContent='Name and host/IP are required.'; return; }
+  const config={};
+  if(type==='http') config.path=document.getElementById('f-path').value||'/';
+  if(['postgres','mysql','redis'].includes(type)){ config.user=document.getElementById('f-user').value||undefined; config.password=document.getElementById('f-pass').value||undefined; }
+  if(['postgres','mysql'].includes(type)) config.database=document.getElementById('f-db').value||undefined;
+  if(type==='disk') config.threshold=Number(document.getElementById('f-threshold').value)||90;
+  const body={ name,type,ip,port:port?Number(port):null,interval_sec,config,public:document.getElementById('f-public').checked,paused:document.getElementById('f-paused').checked };
+  const url = editingId ? `/api/monitors/${editingId}` : '/api/monitors';
+  const method = editingId ? 'PATCH' : 'POST';
+  const r = await fetch(url,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(!r.ok){ const d=await r.json().catch(()=>({})); errEl.textContent=d.error||'Save failed'; return; }
+  closeModal(); toast(editingId?'Monitor updated':'Monitor added'); loadMonitors();
+}
+async function deleteCurrent(){
+  if(!editingId) return;
+  if(!confirm('Delete this monitor? This removes its history too.')) return;
+  await fetch(`/api/monitors/${editingId}`,{method:'DELETE'});
+  closeModal(); toast('Monitor deleted'); loadMonitors();
+}
+
+// ── Agents ─────────────────────────────────────────────────────────────────
+async function loadHosts(){
+  const r = await fetch('/api/hosts');
+  if (r.status===401){ showLogin(); return; }
+  hosts = await r.json();
+  renderHostsNav(); renderHostsGrid(); renderHostStats();
+  refreshHostMetrics();
+}
+function hostStatus(id){ const m=hostMetrics[id]; if(!m)return 'checking'; if(m.error)return 'offline'; if(m.stale)return 'stale'; return 'online'; }
+
+function renderHostStats(){
+  if(currentPage!=='agents') return;
+  const online=hosts.filter(h=>hostStatus(h.id)==='online').length;
+  const offline=hosts.filter(h=>['offline','stale'].includes(hostStatus(h.id))).length;
+  document.getElementById('s-up').textContent=online;
+  document.getElementById('s-down').textContent=offline;
+  document.getElementById('s-tot').textContent=hosts.length;
+  document.getElementById('s-up-label').textContent='Online';
+  document.getElementById('s-down-label').textContent='Offline';
+  document.getElementById('agent-page-sub').textContent=`${hosts.length} agent${hosts.length!==1?'s':''}`;
+}
+
+function renderHostsNav(){
+  if(currentPage!=='agents') return;
+  document.getElementById('nav-list').innerHTML = hosts.map(h=>{
+    const st=hostStatus(h.id);
+    const dot=st==='online'?'up':(st==='checking'?'pending':'down');
+    return `<div class="nav-item" onclick="openEditHost(${h.id})"><div class="ndot ${dot}"></div><span class="nav-name">${esc(h.name)}</span></div>`;
+  }).join('');
+}
+
+function miniStat(label,val){
+  if(val==null||isNaN(val)) return `<div class="mini-stat"><div class="ms-label">${label}</div><div class="ms-val">—</div></div>`;
+  const cls=val>=90?'crit':(val>=75?'warn':'');
+  return `<div class="mini-stat"><div class="ms-label">${label}</div><div class="ms-val">${val}%</div><div class="mini-bar"><div class="mini-bar-fill ${cls}" style="width:${Math.min(val,100)}%"></div></div></div>`;
+}
+
+function renderHostsGrid(){
+  const grid=document.getElementById('agent-grid');
+  if(!hosts.length){ grid.innerHTML=`<div class="empty">No agents yet. Click "+ Add agent" or use the install script.</div>`; return; }
+  grid.innerHTML=hosts.map(h=>{
+    const st=hostStatus(h.id);
+    const m=hostMetrics[h.id];
+    let statsHtml='',detail=`Last seen ${h.last_seen_at?timeAgo(h.last_seen_at):'never'}`;
+    if(st==='checking') detail='Checking…';
+    if(m&&m.error) detail=m.error;
+    if(m&&!m.error){
+      const cpu=m.cpu?m.cpu.load:null;
+      const mem=m.memory?m.memory.usedPercent:null;
+      const disk=(m.disks&&m.disks[0])?m.disks[0].use:null;
+      const uptime=m.uptime_seconds?fmtUptime(m.uptime_seconds):'—';
+      statsHtml=`<div class="agent-stats">${miniStat('CPU',cpu)}${miniStat('Mem',mem)}${miniStat('Disk',disk)}</div>
+      <div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-top:8px">↑ ${uptime} · ${m.distro||''} ${m.release||''}</div>`;
+    }
+    return `
+    <div class="card ${st}">
+      <div class="chead">
+        <div><div class="cname">${esc(h.name)}</div><div class="cmeta">${esc(h.agent_url)}</div></div>
+        <div class="pill ${st}">${st.toUpperCase()}</div>
+      </div>
+      <div class="cbody">
+        <div class="detail" title="${esc(detail)}">${esc(detail)}</div>
+        ${statsHtml}
+      </div>
+      <div class="cfoot">
+        <a class="btn btn-sm" href="/host/${h.id}" target="_blank">Dashboard →</a>
+        <button class="btn btn-sm" onclick="openEditHost(${h.id})">✎ Edit</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function fmtUptime(sec){ const d=Math.floor(sec/86400),h=Math.floor((sec%86400)/3600),m=Math.floor((sec%3600)/60); if(d>0)return`${d}d ${h}h`; if(h>0)return`${h}h ${m}m`; return`${m}m`; }
+
+async function refreshHostMetrics(){
+  if(!hosts.length) return;
+  await Promise.all(hosts.map(async h=>{
+    try{
+      const r=await fetch(`/api/hosts/${h.id}/metrics`);
+      if(r.status===401) return;
+      if(!r.ok){ const d=await r.json().catch(()=>({})); hostMetrics[h.id]={error:d.error||'Agent unreachable'}; return; }
+      hostMetrics[h.id]=await r.json();
+    }catch(e){ hostMetrics[h.id]={error:'Request failed'}; }
+  }));
+  renderHostsGrid(); renderHostsNav(); renderHostStats();
+}
+async function refreshAllHosts(){ toast('Refreshing agents…'); await refreshHostMetrics(); }
+
+function openCreateHost(){
+  editingHostId=null;
+  document.getElementById('host-modal-title').textContent='Add agent';
+  document.getElementById('btn-delete-host').style.display='none';
+  document.getElementById('host-form-err').textContent='';
+  document.getElementById('h-name').value=''; document.getElementById('h-url').value=''; document.getElementById('h-token').value='';
+  document.getElementById('h-token-hint').style.display='none';
+  document.getElementById('host-overlay').classList.add('show');
+}
+function openEditHost(id){
+  const h=hosts.find(x=>x.id===id); if(!h) return;
+  editingHostId=id;
+  document.getElementById('host-modal-title').textContent='Edit agent';
+  document.getElementById('btn-delete-host').style.display='';
+  document.getElementById('host-form-err').textContent='';
+  document.getElementById('h-name').value=h.name; document.getElementById('h-url').value=h.agent_url; document.getElementById('h-token').value='';
+  document.getElementById('h-token-hint').style.display='';
+  document.getElementById('host-overlay').classList.add('show');
+}
+function closeHostModal(){ document.getElementById('host-overlay').classList.remove('show'); }
+
+async function saveHost(){
+  const name=document.getElementById('h-name').value.trim();
+  const agent_url=document.getElementById('h-url').value.trim();
+  const agent_token=document.getElementById('h-token').value;
+  const errEl=document.getElementById('host-form-err');
+  if(!name||!agent_url){ errEl.textContent='Name and agent URL are required.'; return; }
+  const body={name,agent_url}; if(agent_token) body.agent_token=agent_token;
+  const url=editingHostId?`/api/hosts/${editingHostId}`:'/api/hosts';
+  const method=editingHostId?'PATCH':'POST';
+  const r=await fetch(url,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(!r.ok){ const d=await r.json().catch(()=>({})); errEl.textContent=d.error||'Save failed'; return; }
+  closeHostModal(); toast(editingHostId?'Agent updated':'Agent added'); loadHosts();
+}
+async function deleteCurrentHost(){
+  if(!editingHostId) return;
+  if(!confirm('Remove this agent?')) return;
+  await fetch(`/api/hosts/${editingHostId}`,{method:'DELETE'});
+  delete hostMetrics[editingHostId]; closeHostModal(); toast('Agent removed'); loadHosts();
+}
+
+// ── Install modal ──────────────────────────────────────────────────────────
+let _installData = null;
+let _installTab  = 'script'; // 'script' | 'binary'
+let _installArch = 'x64';    // 'x64' | 'arm64'
+
+async function openInstallModal(){
+  const savedToken = localStorage.getItem('upmon-agent-token') || 'changeme';
+  document.getElementById('install-token').value = savedToken;
+  document.getElementById('install-name').value  = '';
+  document.getElementById('install-overlay').classList.add('show');
+  await regenerateInstallCmd();
+}
+
+function switchInstallTab(tab){
+  _installTab = tab;
+  document.getElementById('itab-script').classList.toggle('install-tab-active', tab === 'script');
+  document.getElementById('itab-binary').classList.toggle('install-tab-active', tab === 'binary');
+  document.getElementById('install-mode-script').style.display = tab === 'script' ? '' : 'none';
+  document.getElementById('install-mode-binary').style.display = tab === 'binary' ? '' : 'none';
+  renderInstallCmds();
+}
+
+function switchArch(arch){
+  _installArch = arch;
+  document.getElementById('arch-x64').classList.toggle('arch-btn-active',   arch === 'x64');
+  document.getElementById('arch-arm64').classList.toggle('arch-btn-active', arch === 'arm64');
+  renderInstallCmds();
+}
+
+async function regenerateInstallCmd(){
+  const token = document.getElementById('install-token').value.trim() || 'changeme';
+  const name  = document.getElementById('install-name').value.trim()  || 'my-server';
+  localStorage.setItem('upmon-agent-token', token);
+  try {
+    const r = await fetch(`/api/install-cmd?token=${encodeURIComponent(token)}&name=${encodeURIComponent(name)}`);
+    if (!r.ok) return;
+    _installData = await r.json();
+    renderInstallCmds();
+  } catch(e) {
+    document.getElementById('install-cmd-script-text').textContent = 'Error loading install command.';
+  }
+}
+
+function renderInstallCmds(){
+  if (!_installData) return;
+
+  // Script tab
+  document.getElementById('install-cmd-script-text').textContent = _installData.scriptCmd || _installData.cmd || '';
+  const svc = `sudo tee /etc/systemd/system/upmon-agent.service << 'UNIT'\n${_installData.systemd}\nUNIT\nsudo systemctl daemon-reload && sudo systemctl enable --now upmon-agent`;
+  document.getElementById('install-cmd-systemd-text').textContent = svc;
+
+  // Binary tab
+  const base = _installData.base || '';
+  const token = document.getElementById('install-token').value.trim() || 'changeme';
+  const name  = document.getElementById('install-name').value.trim()  || 'my-server';
+  const binaryCmd = _installData.binaryCmd ||
+    `curl -fsSL ${base}/install-binary.sh | AGENT_TOKEN=${token} UPMON_URL=${base} UPMON_PASSWORD=*** AGENT_NAME="${name}" ARCH=${_installArch} bash`;
+  // Inject arch into the binary cmd
+  const binaryWithArch = binaryCmd.replace(/(ARCH=\w+\s)?/, `ARCH=${_installArch} `);
+  document.getElementById('install-cmd-binary-text').textContent = binaryWithArch;
+
+  // Check if binary is available (ping the endpoint)
+  checkBinaryAvailable(_installArch);
+}
+
+async function checkBinaryAvailable(arch){
+  try {
+    const r = await fetch(`/agent-bin?arch=${arch}`, { method: 'HEAD' });
+    document.getElementById('binary-unavail').style.display = r.ok ? 'none' : '';
+  } catch(e) {
+    document.getElementById('binary-unavail').style.display = '';
+  }
+}
+
+function closeInstallModal(){ document.getElementById('install-overlay').classList.remove('show'); }
+
+function copyCode(id){
+  const txt = document.getElementById(id+'-text').textContent;
+  navigator.clipboard.writeText(txt).then(()=>toast('Copied!')).catch(()=>{});
+}
+
+// ── Settings ───────────────────────────────────────────────────────────────
+async function openSettings(){
+  document.getElementById('tg-status').textContent = '';
+  document.getElementById('tg-status').className = 'tg-status';
+  try {
+    const r = await fetch('/api/settings');
+    if (r.status === 401) { showLogin(); return; }
+    const d = await r.json();
+    document.getElementById('tg-token').value   = d.tg_token   || '';
+    document.getElementById('tg-chat-id').value = d.tg_chat_id || '';
+    document.getElementById('tg-enabled').checked = d.tg_enabled === '1';
+  } catch(e) {}
+  document.getElementById('settings-overlay').classList.add('show');
+}
+
+function closeSettings(){ document.getElementById('settings-overlay').classList.remove('show'); }
+
+async function saveSettings(){
+  const body = {
+    tg_token:   document.getElementById('tg-token').value.trim(),
+    tg_chat_id: document.getElementById('tg-chat-id').value.trim(),
+    tg_enabled: document.getElementById('tg-enabled').checked,
+  };
+  const r = await fetch('/api/settings', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  if (!r.ok) { toast('Failed to save settings'); return; }
+  closeSettings();
+  toast('Settings saved ✓');
+}
+
+async function testTelegram(){
+  const statusEl = document.getElementById('tg-status');
+  statusEl.textContent = 'Sending…'; statusEl.className = 'tg-status';
+  const body = {
+    tg_token:   document.getElementById('tg-token').value.trim(),
+    tg_chat_id: document.getElementById('tg-chat-id').value.trim(),
+  };
+  try {
+    const r = await fetch('/api/settings/test-telegram', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    const d = await r.json();
+    if (r.ok) { statusEl.textContent = '✅ Message sent!'; statusEl.className = 'tg-status ok'; }
+    else { statusEl.textContent = '❌ ' + (d.error || 'Failed'); statusEl.className = 'tg-status err'; }
+  } catch(e) { statusEl.textContent = '❌ Request error'; statusEl.className = 'tg-status err'; }
+}
+
+// ── Checks ─────────────────────────────────────────────────────────────────
+async function checkOne(id){ toast('Checking…'); await fetch(`/api/monitors/${id}/check`,{method:'POST'}); loadMonitors(); }
+async function checkAll(){ toast('Checking all…'); await fetch('/api/check-all',{method:'POST'}); loadMonitors(); }
+
+// ── WebSocket ──────────────────────────────────────────────────────────────
+function connectWs(){
+  const proto=location.protocol==='https:'?'wss:':'ws:';
+  ws=new WebSocket(`${proto}//${location.host}/ws`);
+  ws.onmessage=(ev)=>{
+    const msg=JSON.parse(ev.data);
+    if(msg.type==='check'){
+      const m=monitors.find(x=>x.id===msg.monitorId);
+      if(m){ m.status=msg.status; m.last_latency=msg.latency; m.last_checked_at=msg.ts; m.last_detail=msg.detail; renderAll(); }
+    } else if(['monitor_added','monitor_updated','monitor_removed'].includes(msg.type)){
+      loadMonitors();
+    }
+  };
+  ws.onclose=()=>setTimeout(connectWs,3000);
+  ws.onerror=()=>ws.close();
+}
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='n'&&document.getElementById('app').style.display!=='none'&&!document.getElementById('overlay').classList.contains('show')&&document.activeElement.tagName!=='INPUT') openCreate();
+  if(e.key==='Escape'){ closeModal(); closeHostModal(); closeInstallModal(); closeSettings(); }
+});
+
+checkSession();
+</script>
+</body>
+</html>
