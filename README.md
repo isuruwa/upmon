@@ -1,132 +1,315 @@
 # UpMon
 
-A lightweight, self-hosted uptime monitor: one **public TV/status page** for the office screen,
-and one **password-protected admin dashboard** to create/edit monitors. No external services,
-no Docker required, single SQLite file for storage — survives restarts.
+> Lightweight self-hosted uptime monitor with a public TV/status page, password-protected admin dashboard, remote host metrics via agents, and Telegram alerting. No Docker required — single SQLite file, survives restarts.
 
-Inspired by the good parts of Uptime Kuma (clean status page, simple monitor model) and Zabbix
-(real persistence, incident tracking) without the operational weight of either.
+---
 
-## Why this rebuild (vs. the old infra-monitor)
+## Features
 
-The previous version kept everything (`services`, check history) in a plain JS array in RAM.
-Every restart, crash, or redeploy wiped all monitors and history — there was no real status
-page either (admin and viewer were mixed together in one UI). This version fixes that:
+- **Public status page** (`/`) — TV-friendly, auto-refreshes via WebSocket, no polling countdown
+- **Admin dashboard** (`/admin`) — password-protected, add/edit/delete monitors
+- **Per-host metrics dashboard** (`/host/:id`) — live CPU, memory, disk, and network from remote agents
+- **Monitor types**: HTTP, TCP port, Ping, PostgreSQL, MySQL, Redis, Disk usage
+- **Agent system** — one-command install on any Linux host; agent self-registers and exposes `/metrics`
+- **Telegram alerts** — on down/up events with a 5-minute cooldown to prevent spam
+- **SQLite persistence** via `better-sqlite3` — no native compile step, works on Node 18+
+- **Uptime history** — 24h / 7d / 30d per monitor, check history pruned after 30 days automatically
+- **Incident log** — every down period recorded with start/end timestamps
 
-- **SQLite persistence** — monitors, every check, and incidents survive restarts. Uses Node's
-  built-in `node:sqlite` module, so there's no native compilation step to fight with on the LXC.
-- **Separate public status page (`/`) and admin dashboard (`/admin`)** — the TV only ever shows
-  the clean public view; nobody can accidentally edit monitors from the office screen.
-- **Real up/down history + uptime %** (24h / 7d / 30d) per monitor, not just "last 20 in RAM."
-- **Incident log** — every down period is recorded with start/end time.
-- **Password-gated admin** via a single env var, session cookie based.
-- **Monitor types**: HTTP, TCP port, Ping (TCP-based reachability), Postgres, Redis, Disk usage.
+---
 
 ## Requirements
 
-- Node.js **22.5+** (uses the built-in `node:sqlite` module — no native build tools needed)
-- That's it. No Docker, no Postgres/Redis server required for UpMon itself (those are only
-  used if you choose to *monitor* a Postgres/Redis target).
+- **Node.js 18+** (tested on Node 20 LTS)
+- No Docker, no external database required for UpMon itself
 
-Check your Proxmox LXC's Node version:
+Verify your Node version:
 ```bash
 node --version
 ```
-If it's older than 22.5, update it (NodeSource setup script, example for Debian/Ubuntu base):
+
+Install or upgrade Node via NodeSource if needed:
 ```bash
-curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 sudo apt-get install -y nodejs
 ```
 
-## Setup
+---
+
+## Quick Start
 
 ```bash
+git clone https://github.com/youruser/upmon.git
+cd upmon
 npm install
-ADMIN_PASSWORD=your-real-password PORT=3002 node server.js
+ADMIN_PASSWORD=yourpassword PORT=3002 node server.js
 ```
 
-Open:
-- **Public status (TV)**: `http://<ip>:3002/`
-- **Admin dashboard**: `http://<ip>:3002/admin`
+Open in browser:
+- **Status page (TV)**: `http://localhost:3002/`
+- **Admin dashboard**: `http://localhost:3002/admin`
 
-On first run a `data/upmon.db` SQLite file is created automatically — back this up if you care
-about historical uptime data (it's the only stateful file in the project).
+On first run, `data/upmon.db` is created automatically. Back this up — it's the only stateful file.
 
-## Environment variables
+---
 
-| Var | Default | Purpose |
+## Environment Variables
+
+| Variable | Default | Description |
 |---|---|---|
 | `PORT` | `3002` | HTTP port |
-| `ADMIN_PASSWORD` | `changeme` | Password for `/admin`. **Set this before exposing the box.** |
-| `SESSION_SECRET` | random per boot | Set a fixed value if you want sessions to survive a restart |
-| `DATA_DIR` | `./data` | Where `upmon.db` lives |
+| `ADMIN_PASSWORD` | `changeme` | Password for `/admin`. **Always set this.** |
+| `SESSION_SECRET` | random per boot | Set a fixed value so sessions survive restarts |
+| `DATA_DIR` | `./data` | Directory where `upmon.db` lives |
 
-Example `upmon.env` (used by the systemd unit below):
-```
+Create an `upmon.env` file for persistent config:
+```env
 ADMIN_PASSWORD=something-only-you-know
-SESSION_SECRET=some-long-random-string
+SESSION_SECRET=some-long-random-string-here
 PORT=3002
 ```
 
-## Deploying on your Proxmox LXC (matches your existing UpMon v2 setup)
+---
+
+## Production Setup with PM2
+
+PM2 is the easiest way to run UpMon in production without systemd — auto-restarts on crash, survives reboots, and gives you log management.
+
+### Install PM2
 
 ```bash
-# On the LXC
-mkdir -p /opt/upmon
-# copy the project files into /opt/upmon (scp, git clone, rsync — your call)
-cd /opt/upmon
-npm install --omit=dev
+npm install -g pm2
+```
 
-useradd -r -s /usr/sbin/nologin upmon || true
-chown -R upmon:upmon /opt/upmon
+### Start UpMon with PM2
 
-cat > /opt/upmon/upmon.env <<'EOF'
-ADMIN_PASSWORD=change-this-now
-SESSION_SECRET=change-this-too-long-random-string
-PORT=3002
-EOF
-chmod 600 /opt/upmon/upmon.env
-chown upmon:upmon /opt/upmon/upmon.env
+Using an inline environment:
+```bash
+pm2 start server.js --name upmon \
+  --env production \
+  -- \
+  PORT=3002
 
-cp upmon.service /etc/systemd/system/upmon.service
+# Or with env vars set before the command:
+ADMIN_PASSWORD=yourpassword SESSION_SECRET=yoursecret PORT=3002 \
+  pm2 start server.js --name upmon
+```
+
+### Recommended: ecosystem config file
+
+Create `ecosystem.config.js` in the project root:
+
+```js
+module.exports = {
+  apps: [
+    {
+      name: 'upmon',
+      script: './server.js',
+      cwd: '/opt/upmon',
+      env: {
+        NODE_ENV: 'production',
+        PORT: 3002,
+        ADMIN_PASSWORD: 'change-this-now',
+        SESSION_SECRET: 'change-this-long-random-string',
+        DATA_DIR: '/opt/upmon/data',
+      },
+      restart_delay: 3000,
+      max_restarts: 10,
+      autorestart: true,
+      watch: false,
+      log_date_format: 'YYYY-MM-DD HH:mm:ss',
+    },
+  ],
+};
+```
+
+Then start it:
+```bash
+pm2 start ecosystem.config.js
+```
+
+### Survive reboots
+
+```bash
+pm2 startup        # generates and prints a command — run that command as root
+pm2 save           # saves the current process list
+```
+
+### Common PM2 commands
+
+```bash
+pm2 list                   # show all processes
+pm2 logs upmon             # tail live logs
+pm2 logs upmon --lines 100 # last 100 lines
+pm2 restart upmon          # restart
+pm2 stop upmon             # stop
+pm2 delete upmon           # remove from PM2
+pm2 monit                  # live dashboard (CPU/memory per process)
+```
+
+---
+
+## Agent Setup (Remote Host Monitoring)
+
+The UpMon agent is a small Node.js process that runs on each server you want to monitor. It exposes a `/metrics` endpoint that UpMon polls every 15 seconds.
+
+### Metrics collected by the agent
+
+- CPU load (%), per-core history, load averages, brand/core info
+- Memory: total, used, free, swap
+- Disk: per-filesystem usage %, read/write speeds
+- Network: interface stats, IP addresses, rx/tx rates
+- OS info, uptime, logged-in users
+
+### One-command install (run on the target server as root)
+
+```bash
+curl -fsSL http://your-upmon-server:3002/install.sh | \
+  UPMON_URL="http://your-upmon-server:3002" \
+  UPMON_PASSWORD="your-admin-password" \
+  bash
+```
+
+The script will:
+1. Install Node.js 20 LTS if not present (supports `apt` / `dnf` / `yum`)
+2. Download `agent.js` from your UpMon server
+3. Install npm dependencies
+4. Create and start a `systemd` service (`upmon-agent`)
+5. Auto-detect the server's IP and register it with UpMon
+
+### Agent install options
+
+| Variable | Default | Description |
+|---|---|---|
+| `UPMON_URL` | *(required)* | URL of your UpMon server |
+| `UPMON_PASSWORD` | *(required)* | Admin password |
+| `AGENT_PORT` | `4242` | Port the agent listens on |
+| `AGENT_TOKEN` | *(auto-generated)* | Secret token for agent auth |
+| `HOST_NAME` | server hostname | Display name in the UpMon UI |
+| `AGENT_IP` | *(auto-detected)* | IP UpMon uses to reach the agent |
+
+Custom port and name example:
+```bash
+curl -fsSL http://your-upmon-server:3002/install.sh | \
+  UPMON_URL="http://your-upmon-server:3002" \
+  UPMON_PASSWORD="your-admin-password" \
+  AGENT_PORT=9000 \
+  HOST_NAME="prod-web-01" \
+  bash
+```
+
+### Manage the agent service
+
+```bash
+systemctl status upmon-agent
+journalctl -u upmon-agent -f
+systemctl restart upmon-agent
+
+# Uninstall
+systemctl stop upmon-agent && systemctl disable upmon-agent
+rm -rf /opt/upmon-agent /etc/systemd/system/upmon-agent.service
 systemctl daemon-reload
-systemctl enable --now upmon
-systemctl status upmon
 ```
 
-Logs:
+### Manual agent registration (no install script)
+
 ```bash
-journalctl -u upmon -f
+# On the target server
+mkdir -p /opt/upmon-agent && cd /opt/upmon-agent
+curl -O http://your-upmon-server:3002/agent/agent.js
+curl -O http://your-upmon-server:3002/agent/package.json
+npm install --omit=dev
+AGENT_TOKEN=your_secret node agent.js
+
+# Register from anywhere
+curl -X POST http://your-upmon-server:3002/api/register-agent \
+  -H "Content-Type: application/json" \
+  -d '{
+    "password":    "your-admin-password",
+    "name":        "My Server",
+    "agent_url":   "http://192.168.1.10:4242",
+    "agent_token": "your_secret"
+  }'
 ```
 
-Point the office TV browser at `http://<lxc-ip>:3002/` (kiosk mode / fullscreen browser, auto-refreshes
-itself via WebSocket — no manual reload needed, no `Refresh in: 00:03` countdown hack like before).
+### Firewall
 
-## Adding monitors
+The UpMon server polls the agent — the agent never calls out. Allow only your UpMon server:
+```bash
+ufw allow from <upmon-server-ip> to any port 4242
+```
 
-1. Go to `/admin`, log in with `ADMIN_PASSWORD`.
-2. Click **+ Add monitor**, choose a type:
-   - **HTTP** — checks a URL, considers any non-4xx/5xx (or your chosen exact status) as up
-   - **TCP port** — raw port-open check (use for SSH, SIP, custom app ports, etc.)
-   - **Ping** — best-effort reachability (TCP probe on 80/443, since raw ICMP needs root)
-   - **Postgres** — connects + runs `SELECT 1`
-   - **Redis** — connects + `PING`
-   - **Disk usage** — local disk % used (remote disk needs an agent; falls back to TCP ping)
-3. Set the check interval and whether it should appear on the public status page (uncheck
-   "Show on public status page" for anything internal-only you don't want on the TV).
-4. Save — it checks immediately, then on the interval you set.
+---
 
-## Notes / limitations
+## Monitor Types
 
-- `node:sqlite` is marked experimental by Node upstream but is stable enough for this workload
-  (single-writer, low write volume — a handful of checks per minute). If you'd rather use a
-  battle-tested driver, swap `db.js` for `better-sqlite3` (needs build tools / internet access
-  to compile on first `npm install`, which is why this default avoids it).
-- Old check rows older than 30 days are pruned automatically (hourly) to keep the DB small —
-  adjust `pruneOldChecks` in `db.js` if you want longer retention.
-- Disk monitoring for **remote** hosts isn't implemented (no agent) — it falls back to a TCP
-  reachability check on SSH. If you want real remote disk %, the old README's suggestion stands:
-  expose a small `/health` JSON endpoint on the target and we can add an HTTP-based disk checker.
-- No email/Telegram/webhook alerting yet (you already have a Telegram flow in your n8n
-  FB Autoposter project — say the word and I can wire UpMon's incident events to hit a webhook
-  n8n can consume, so down/up events ping your existing Telegram bot).
+| Type | What it checks |
+|---|---|
+| **HTTP** | URL reachability; any non-4xx/5xx response is up |
+| **TCP** | Raw port-open check (SSH, SIP, custom ports, etc.) |
+| **Ping** | TCP probe on port 80/443 (no raw ICMP needed) |
+| **PostgreSQL** | Connects and runs `SELECT 1` |
+| **MySQL** | Connects and runs `SELECT 1` |
+| **Redis** | Connects and sends `PING` |
+| **Disk** | Local disk % used (remote disk requires an agent) |
+
+---
+
+## Telegram Notifications
+
+1. Go to `/admin` → **Settings** → **Notifications**
+2. Enter your Bot Token and Chat ID
+3. Click **Test** to verify
+4. Save — UpMon will send an alert when any monitor goes down or recovers
+
+Alerts have a 5-minute cooldown per monitor to prevent spam on flapping services. Messages are sent as HTML-formatted Telegram messages.
+
+---
+
+## Adding Monitors
+
+1. Open `/admin` and log in
+2. Click **+ Add monitor**
+3. Choose a type, set the host/IP, port, and check interval
+4. Toggle **Show on public status page** — uncheck for internal-only monitors you don't want on the TV
+5. Save — the first check runs immediately
+
+---
+
+## Project Structure
+
+```
+upmon/
+├── server.js           # Main Express app, WebSocket, check scheduler
+├── checkers.js         # Monitor type implementations (HTTP/TCP/PG/MySQL/Redis/Disk)
+├── db.js               # SQLite schema, queries, pruning
+├── agent.js            # Agent process (runs on monitored hosts)
+├── agent-package.json  # Agent dependencies (standalone)
+├── install-agent.sh    # One-command agent installer (served at /install.sh)
+├── public/
+│   ├── status.html     # Public TV status page
+│   ├── admin.html      # Admin dashboard
+│   └── host.html       # Per-host metrics view
+├── upmon.service       # systemd unit file
+├── start.sh            # Dev start script (clears SQLite WAL locks)
+├── package.json
+└── data/
+    └── upmon.db        # SQLite database (auto-created, back this up)
+```
+
+---
+
+## Backup
+
+The only file you need to back up is `data/upmon.db`:
+```bash
+cp /opt/upmon/data/upmon.db /your/backup/location/upmon-$(date +%F).db
+```
+
+Check history older than 30 days is pruned automatically (hourly). Adjust `pruneOldChecks` in `db.js` for longer retention.
+
+---
+
+## License
+
+ISC
